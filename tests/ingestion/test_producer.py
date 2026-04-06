@@ -164,3 +164,12 @@ def test_main_reads_values_from_environment(mocker):
         retry_attempts=7,
         retry_backoff_seconds=9,
     )
+
+
+def test_run_cli_calls_main(mocker):
+    main_mock = mocker.patch.object(producer_module, "main", return_value=0)
+
+    result = producer_module.run_cli()
+
+    assert result == 0
+    main_mock.assert_called_once_with()

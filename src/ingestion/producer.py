@@ -125,3 +125,13 @@ def main(env_path: str | None = None) -> int:
     )
     producer.run()
     return 0
+
+
+def run_cli() -> int:
+    """Runs the producer when the module is executed as a script."""
+
+    return main()
+
+
+if __name__ == "__main__":
+    raise SystemExit(run_cli())
