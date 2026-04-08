@@ -1,37 +1,13 @@
 import importlib.util
 import json
-import sys
 from pathlib import Path
-from types import ModuleType
 
 from kafka.errors import NoBrokersAvailable
-
-
-def _build_fake_pandas_module():
-    pandas_module = ModuleType("pandas")
-
-    class FakeFrame:
-        def __init__(self, records, columns):
-            self.records = records
-            self.columns = columns
-
-        def to_parquet(self, destination, index=False):
-            assert index is False
-            Path(destination).write_text("parquet-bytes", encoding="utf-8")
-
-    class FakeDataFrame:
-        @staticmethod
-        def from_records(records, columns):
-            return FakeFrame(records, columns)
-
-    pandas_module.DataFrame = FakeDataFrame
-    return pandas_module
 
 
 def _load_module(module_name: str, module_path: Path, mocker):
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(spec)
-    mocker.patch.dict(sys.modules, {"pandas": _build_fake_pandas_module()})
     assert spec is not None and spec.loader is not None
     spec.loader.exec_module(module)
     return module
@@ -178,7 +154,7 @@ def test_consumer_build_raw_output_path_uses_single_daily_jsonl_file(mocker):
     assert result == "/data/air-quality/sofia/raw/2026-04-07.jsonl"
 
 
-def test_consumer_build_curated_output_path_uses_daily_partition_folder(mocker):
+def test_consumer_build_curated_output_path_uses_daily_jsonl_file(mocker):
     consumer_module = _load_consumer_module(mocker)
     mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
     mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=FakeHDFSClient(False))
@@ -186,7 +162,7 @@ def test_consumer_build_curated_output_path_uses_daily_partition_folder(mocker):
 
     result = consumer.build_curated_output_path("2026-04-07")
 
-    assert result == "/data/air-quality/sofia/curated/day=2026-04-07"
+    assert result == "/data/air-quality/sofia/curated/2026-04-07.jsonl"
 
 
 def test_consumer_write_raw_records_appends_when_daily_file_exists(mocker):
@@ -209,18 +185,12 @@ def test_consumer_write_raw_records_appends_when_daily_file_exists(mocker):
     ]
 
 
-def test_consumer_write_curated_records_creates_parquet_part_and_uploads_it(tmp_path, mocker):
+def test_consumer_write_curated_records_creates_daily_jsonl_when_missing(mocker):
     consumer_module = _load_consumer_module(mocker)
     fake_hdfs_client = FakeHDFSClient(exists_result=False)
     mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
     mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client)
-    mocker.patch.object(consumer_module.Consumer, "_build_parquet_part_name", return_value="part-001.parquet")
-    consumer = consumer_module.Consumer(
-        aqicn_api_token="",
-        output_root="/data/air-quality",
-        city="sofia",
-        local_staging_dir=tmp_path,
-    )
+    consumer = consumer_module.Consumer(aqicn_api_token="", output_root="/data/air-quality", city="sofia")
     curated_records = [
         {
             "timestamp": "2026-04-07T10:00:00+03:00",
@@ -244,11 +214,49 @@ def test_consumer_write_curated_records_creates_parquet_part_and_uploads_it(tmp_
     consumer.write_curated_records(curated_records, "2026-04-07")
 
     assert fake_hdfs_client.calls == [
-        ("ensure_directory", "/data/air-quality/sofia/curated/day=2026-04-07"),
+        ("exists", "/data/air-quality/sofia/curated/2026-04-07.jsonl"),
         (
-            "upload_file",
-            tmp_path / "part-001.parquet",
-            "/data/air-quality/sofia/curated/day=2026-04-07/part-001.parquet",
+            "create_text",
+            "/data/air-quality/sofia/curated/2026-04-07.jsonl",
+            '{"timestamp":"2026-04-07T10:00:00+03:00","station_id":42,"station_name":"Sofia","latitude":42.6977,"longitude":23.3219,"aqi":64,"dominant_pollutant":"pm10","pm10":31.5,"no2":18.2,"o3":11.4,"temperature":19.1,"humidity":47.0,"wind":3.5,"pressure":1008.0,"dew":7.2}\n',
+        ),
+    ]
+
+
+def test_consumer_write_curated_records_appends_to_daily_jsonl_when_present(mocker):
+    consumer_module = _load_consumer_module(mocker)
+    fake_hdfs_client = FakeHDFSClient(exists_result=True)
+    mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
+    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client)
+    consumer = consumer_module.Consumer(aqicn_api_token="", output_root="/data/air-quality", city="sofia")
+    curated_records = [
+        {
+            "timestamp": "2026-04-07T10:00:00+03:00",
+            "station_id": 42,
+            "station_name": "Sofia",
+            "latitude": 42.6977,
+            "longitude": 23.3219,
+            "aqi": 64,
+            "dominant_pollutant": "pm10",
+            "pm10": 31.5,
+            "no2": 18.2,
+            "o3": 11.4,
+            "temperature": 19.1,
+            "humidity": 47.0,
+            "wind": 3.5,
+            "pressure": 1008.0,
+            "dew": 7.2,
+        }
+    ]
+
+    consumer.write_curated_records(curated_records, "2026-04-07")
+
+    assert fake_hdfs_client.calls == [
+        ("exists", "/data/air-quality/sofia/curated/2026-04-07.jsonl"),
+        (
+            "append_text",
+            "/data/air-quality/sofia/curated/2026-04-07.jsonl",
+            '{"timestamp":"2026-04-07T10:00:00+03:00","station_id":42,"station_name":"Sofia","latitude":42.6977,"longitude":23.3219,"aqi":64,"dominant_pollutant":"pm10","pm10":31.5,"no2":18.2,"o3":11.4,"temperature":19.1,"humidity":47.0,"wind":3.5,"pressure":1008.0,"dew":7.2}\n',
         ),
     ]
 
@@ -270,7 +278,6 @@ def test_consumer_consume_once_groups_messages_and_writes_outputs(tmp_path, mock
     logger = mocker.Mock()
     mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=fake_kafka_consumer)
     mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client)
-    mocker.patch.object(consumer_module.Consumer, "_build_parquet_part_name", side_effect=["part-001.parquet", "part-002.parquet"])
     consumer = consumer_module.Consumer(
         aqicn_api_token="",
         output_root="/data/air-quality",

@@ -2,10 +2,9 @@ import json
 import logging
 import time
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
-import pandas as pd
 from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
 
@@ -25,25 +24,6 @@ DEFAULT_POLL_TIMEOUT_MS = 5000
 DEFAULT_BATCH_SIZE = 100
 DEFAULT_KAFKA_CONNECT_RETRY_ATTEMPTS = 6
 DEFAULT_KAFKA_CONNECT_RETRY_BACKOFF_SECONDS = 5
-
-CURATED_COLUMNS = (
-    "timestamp",
-    "station_id",
-    "station_name",
-    "latitude",
-    "longitude",
-    "aqi",
-    "dominant_pollutant",
-    "pm10",
-    "no2",
-    "o3",
-    "temperature",
-    "humidity",
-    "wind",
-    "pressure",
-    "dew",
-)
-
 
 def default_processing_date() -> str:
     """Return the default processing date string.
@@ -91,7 +71,7 @@ def get_nested(mapping: dict | None, *keys: str):
 
 
 class Consumer:
-    """A Kafka consumer that writes raw JSON and curated Parquet data to HDFS."""
+    """A Kafka consumer that writes raw and curated JSON data to HDFS."""
 
     def __init__(
         self,
@@ -123,7 +103,7 @@ class Consumer:
             processing_date: An optional fallback processing date.
             hdfs_namenode_url: A Namenode WebHDFS base URL.
             hdfs_user: An HDFS user name.
-            local_staging_dir: A local directory used for temporary Parquet files.
+            local_staging_dir: An unused compatibility setting kept for config stability.
             consumer_group: A Kafka consumer group id.
             poll_timeout_ms: A Kafka poll timeout in milliseconds.
             batch_size: A maximum number of Kafka messages per poll.
@@ -278,16 +258,16 @@ class Consumer:
         return join_hdfs_root(self.output_root, self.city, "raw", f"{day}.jsonl")
 
     def build_curated_output_path(self, day: str) -> str:
-        """Build the daily curated Parquet output directory.
+        """Build the daily curated JSON output path.
 
         Args:
             day: A day string in `YYYY-MM-DD` format.
 
         Returns:
-            str: An HDFS directory for the daily curated dataset.
+            str: An HDFS path for the daily curated JSON Lines file.
         """
 
-        return join_hdfs_root(self.output_root, self.city, "curated", f"day={day}")
+        return join_hdfs_root(self.output_root, self.city, "curated", f"{day}.jsonl")
 
     def write_raw_records(self, records: list[dict], day: str) -> str | None:
         """Write raw JSON records to the daily HDFS JSON Lines file.
@@ -313,7 +293,7 @@ class Consumer:
         return path
 
     def write_curated_records(self, curated_records: list[dict], day: str) -> str | None:
-        """Write curated records into the daily HDFS Parquet dataset.
+        """Write curated records to the daily HDFS JSON Lines file.
 
         Args:
             curated_records: A list of curated records.
@@ -326,20 +306,14 @@ class Consumer:
         if not curated_records:
             return None
 
-        remote_directory = self.build_curated_output_path(day)
-        part_name = self._build_parquet_part_name()
-        local_path = self.local_staging_dir / part_name
-        remote_path = f"{remote_directory}/{part_name}"
+        path = self.build_curated_output_path(day)
+        content = "".join(json.dumps(record, separators=(",", ":")) + "\n" for record in curated_records)
+        if self.hdfs_client.exists(path):
+            self.hdfs_client.append_text(path, content)
+        else:
+            self.hdfs_client.create_text(path, content)
 
-        self.hdfs_client.ensure_directory(remote_directory)
-        self._write_parquet_file(curated_records, local_path)
-        try:
-            self.hdfs_client.upload_file(local_path, remote_path)
-        finally:
-            if local_path.exists():
-                local_path.unlink()
-
-        return remote_path
+        return path
 
     def get_geo_value(self, data: dict, index: int):
         """Return a latitude or longitude value from the AQICN geo array.
@@ -369,31 +343,6 @@ class Consumer:
         """
 
         return get_nested(data, "iaqi", key, "v")
-
-    def _build_parquet_part_name(self, now: datetime | None = None) -> str:
-        """Build a unique Parquet part file name.
-
-        Args:
-            now: An optional timestamp override.
-
-        Returns:
-            str: A Parquet part file name.
-        """
-
-        stamp = (now or datetime.utcnow()).strftime("%Y%m%d%H%M%S%f")
-        return f"part-{stamp}.parquet"
-
-    def _write_parquet_file(self, records: list[dict], destination: Path) -> None:
-        """Write curated records into a local Parquet file.
-
-        Args:
-            records: A list of curated records.
-            destination: A local file path.
-        """
-
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        frame = pd.DataFrame.from_records(records, columns=CURATED_COLUMNS)
-        frame.to_parquet(destination, index=False)
 
     def _create_kafka_consumer(self):
         """Create the Kafka consumer used by the streaming consumer.
