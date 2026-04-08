@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
+from kafka.errors import NoBrokersAvailable
+
 
 def _build_fake_pandas_module():
     pandas_module = ModuleType("pandas")
@@ -376,6 +378,27 @@ def test_consumer_run_processes_the_requested_number_of_iterations(mocker):
     consumer.run(iterations=3)
 
     assert consume_once.call_count == 3
+
+
+def test_consumer_retries_kafka_connection_when_broker_is_temporarily_unavailable(mocker):
+    consumer_module = _load_consumer_module(mocker)
+    fake_hdfs_client = FakeHDFSClient(False)
+    kafka_consumer = FakeKafkaConsumer([])
+    sleep = mocker.Mock()
+
+    mocker.patch.object(consumer_module, "KafkaConsumer", side_effect=[NoBrokersAvailable(), kafka_consumer])
+    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client)
+
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="",
+        kafka_connect_retry_attempts=2,
+        kafka_connect_retry_backoff_seconds=7,
+        sleep=sleep,
+    )
+
+    assert consumer.kafka_consumer is kafka_consumer
+    assert consumer_module.KafkaConsumer.call_count == 2
+    sleep.assert_called_once_with(7)
 
 
 def test_hdfs_client_exists_returns_false_for_missing_path(mocker):

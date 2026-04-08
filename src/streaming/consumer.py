@@ -1,11 +1,13 @@
 import json
 import logging
+import time
 from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
 from kafka import KafkaConsumer
+from kafka.errors import NoBrokersAvailable
 
 from src.streaming.hdfs_client import DEFAULT_HDFS_NAMENODE_URL
 from src.streaming.hdfs_client import DEFAULT_HDFS_USER
@@ -21,6 +23,8 @@ DEFAULT_LOCAL_STAGING_DIR = "/tmp/air-quality"
 DEFAULT_CONSUMER_GROUP = "air-quality-streaming"
 DEFAULT_POLL_TIMEOUT_MS = 5000
 DEFAULT_BATCH_SIZE = 100
+DEFAULT_KAFKA_CONNECT_RETRY_ATTEMPTS = 6
+DEFAULT_KAFKA_CONNECT_RETRY_BACKOFF_SECONDS = 5
 
 CURATED_COLUMNS = (
     "timestamp",
@@ -103,7 +107,10 @@ class Consumer:
         consumer_group: str = DEFAULT_CONSUMER_GROUP,
         poll_timeout_ms: int = DEFAULT_POLL_TIMEOUT_MS,
         batch_size: int = DEFAULT_BATCH_SIZE,
+        kafka_connect_retry_attempts: int = DEFAULT_KAFKA_CONNECT_RETRY_ATTEMPTS,
+        kafka_connect_retry_backoff_seconds: int = DEFAULT_KAFKA_CONNECT_RETRY_BACKOFF_SECONDS,
         logger: logging.Logger | None = None,
+        sleep=time.sleep,
     ) -> None:
         """Initialize the streaming consumer.
 
@@ -120,7 +127,10 @@ class Consumer:
             consumer_group: A Kafka consumer group id.
             poll_timeout_ms: A Kafka poll timeout in milliseconds.
             batch_size: A maximum number of Kafka messages per poll.
+            kafka_connect_retry_attempts: A number of Kafka connection attempts before failing.
+            kafka_connect_retry_backoff_seconds: A delay between Kafka connection attempts.
             logger: An optional application logger.
+            sleep: A sleep function used between Kafka connection attempts.
         """
 
         self.aqicn_api_token = aqicn_api_token
@@ -135,9 +145,12 @@ class Consumer:
         self.consumer_group = consumer_group
         self.poll_timeout_ms = poll_timeout_ms
         self.batch_size = batch_size
+        self.kafka_connect_retry_attempts = kafka_connect_retry_attempts
+        self.kafka_connect_retry_backoff_seconds = kafka_connect_retry_backoff_seconds
+        self.logger = logger or logging.getLogger("air_quality.streaming")
+        self.sleep = sleep
         self.kafka_consumer = self._create_kafka_consumer()
         self.hdfs_client = self._create_hdfs_client()
-        self.logger = logger or logging.getLogger("air_quality.streaming")
 
     def run(self, iterations: int | None = None) -> None:
         """Run the streaming loop.
@@ -394,14 +407,30 @@ class Consumer:
             for server in self.kafka_bootstrap_servers.split(",")
             if server.strip()
         ]
-        return KafkaConsumer(
-            self.kafka_topic,
-            bootstrap_servers=bootstrap_servers,
-            group_id=self.consumer_group,
-            auto_offset_reset="latest",
-            enable_auto_commit=True,
-            value_deserializer=lambda value: value,
-        )
+        last_error = None
+        for attempt in range(1, self.kafka_connect_retry_attempts + 1):
+            try:
+                return KafkaConsumer(
+                    self.kafka_topic,
+                    bootstrap_servers=bootstrap_servers,
+                    group_id=self.consumer_group,
+                    auto_offset_reset="latest",
+                    enable_auto_commit=True,
+                    value_deserializer=lambda value: value,
+                )
+            except NoBrokersAvailable as exc:
+                last_error = exc
+                if attempt >= self.kafka_connect_retry_attempts:
+                    break
+                self.logger.warning(
+                    f"Kafka broker not available on attempt "
+                    f"{attempt}/{self.kafka_connect_retry_attempts}; "
+                    f"retrying in {self.kafka_connect_retry_backoff_seconds} seconds"
+                )
+                self.sleep(self.kafka_connect_retry_backoff_seconds)
+
+        assert last_error is not None
+        raise last_error
 
     def _create_hdfs_client(self) -> HDFSClient:
         """Create the HDFS client used by the streaming consumer.
