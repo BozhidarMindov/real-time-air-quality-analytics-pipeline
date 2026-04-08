@@ -1,15 +1,10 @@
 import json
 import logging
-import os
-from pathlib import Path
 import time
 
-from dotenv import load_dotenv
 from src.ingestion.aqicn_client import AQICNClient
 
 from kafka import KafkaProducer
-
-DEFAULT_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Producer:
@@ -94,44 +89,3 @@ class Producer:
             if server.strip()
         ]
         return KafkaProducer(bootstrap_servers=bootstrap_servers)
-
-def main(env_path: str | None = None) -> int:
-    """Runs the ingestion producer entrypoint.
-
-    Args:
-        env_path: An optional path to the dotenv file.
-
-    Returns:
-        int: A process exit code.
-    """
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
-    dotenv_path = Path(env_path) if env_path is not None else DEFAULT_ENV_PATH
-    load_dotenv(dotenv_path=dotenv_path)
-
-    producer = Producer(
-        aqicn_api_token=os.getenv("AQICN_API_TOKEN", ""),
-        city=os.getenv("CITY", "sofia"),
-        poll_interval_seconds=int(os.getenv("POLL_INTERVAL_SECONDS", 60)),
-        kafka_bootstrap_servers=os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9094"),
-        kafka_topic=os.getenv("KAFKA_TOPIC", "air_quality_sofia"),
-        aqicn_base_url=os.getenv("AQICN_BASE_URL", "https://api.waqi.info/feed"),
-        request_timeout_seconds=int(os.getenv("REQUEST_TIMEOUT_SECONDS", 30)),
-        retry_attempts=int(os.getenv("RETRY_ATTEMPTS", 3)),
-        retry_backoff_seconds=int(os.getenv("RETRY_BACKOFF_SECONDS", 5)),
-    )
-    producer.run()
-    return 0
-
-
-def run_cli() -> int:
-    """Runs the producer when the module is executed as a script."""
-
-    return main()
-
-
-if __name__ == "__main__":
-    raise SystemExit(run_cli())

@@ -1,5 +1,14 @@
-import importlib
+import logging
 import os
+
+from src.streaming.consumer import Consumer
+from src.streaming.consumer import DEFAULT_BOOTSTRAP_SERVERS
+from src.streaming.consumer import DEFAULT_CITY
+from src.streaming.consumer import DEFAULT_KAFKA_TOPIC
+from src.streaming.consumer import DEFAULT_LOCAL_STAGING_DIR
+from src.streaming.consumer import DEFAULT_OUTPUT_ROOT
+from src.streaming.hdfs_client import DEFAULT_HDFS_NAMENODE_URL
+from src.streaming.hdfs_client import DEFAULT_HDFS_USER
 
 
 def _getenv_or_default(key: str, default: str | None) -> str | None:
@@ -7,43 +16,48 @@ def _getenv_or_default(key: str, default: str | None) -> str | None:
     return value if value else default
 
 
-def _load_streaming_module():
-    return importlib.import_module("src.streaming.streaming_job")
-
-
 def main() -> int:
-    streaming_module = _load_streaming_module()
-    return streaming_module.main(
-        bootstrap_servers=_getenv_or_default(
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    consumer = Consumer(
+        aqicn_api_token="",
+        kafka_bootstrap_servers=_getenv_or_default(
             "KAFKA_BOOTSTRAP_SERVERS",
-            streaming_module.DEFAULT_BOOTSTRAP_SERVERS,
+            DEFAULT_BOOTSTRAP_SERVERS,
         ),
-        topic=_getenv_or_default(
+        kafka_topic=_getenv_or_default(
             "KAFKA_TOPIC",
-            streaming_module.DEFAULT_KAFKA_TOPIC,
+            DEFAULT_KAFKA_TOPIC,
         ),
         city=_getenv_or_default(
             "CITY",
-            streaming_module.DEFAULT_CITY,
+            DEFAULT_CITY,
         ),
         output_root=_getenv_or_default(
             "OUTPUT_ROOT",
-            streaming_module.DEFAULT_OUTPUT_ROOT,
+            DEFAULT_OUTPUT_ROOT,
         ),
         processing_date=_getenv_or_default("PROCESSING_DATE", None),
         hdfs_namenode_url=_getenv_or_default(
             "HDFS_NAMENODE_URL",
-            streaming_module.DEFAULT_HDFS_NAMENODE_URL,
+            DEFAULT_HDFS_NAMENODE_URL,
         ),
         hdfs_user=_getenv_or_default(
             "HDFS_USER",
-            streaming_module.DEFAULT_HDFS_USER,
+            DEFAULT_HDFS_USER,
         ),
         local_staging_dir=_getenv_or_default(
             "LOCAL_STAGING_DIR",
-            streaming_module.DEFAULT_LOCAL_STAGING_DIR,
+            DEFAULT_LOCAL_STAGING_DIR,
         ),
     )
+    try:
+        consumer.run()
+    except KeyboardInterrupt:
+        logging.getLogger("air_quality.streaming").info("Streaming consumer stopped")
+    return 0
 
 
 def run_cli() -> int:
