@@ -17,6 +17,60 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 
+  namenode:
+    image: apache/hadoop:3.4.1
+    container_name: namenode
+    hostname: namenode
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+    volumes:
+      - ./data/namenode:/opt/hadoop/data/nameNode
+      - ./config:/opt/hadoop/etc/hadoop
+      - ./scripts/start-hdfs.sh:/start-hdfs.sh
+      - ./config/log4j.properties:/opt/hadoop/etc/hadoop/log4j.properties
+    ports:
+      - "9870:9870"
+    command: [ "/bin/bash", "/start-hdfs.sh" ]
+    restart: always
+
+  datanode1:
+    image: apache/hadoop:3.4.3
+    container_name: datanode1
+    hostname: datanode1
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+    volumes:
+      - ./data/datanode1:/opt/hadoop/data/dataNode
+      - ./config:/opt/hadoop/etc/hadoop
+      - ./scripts/init-datanode.sh:/init-datanode.sh
+      - ./config/log4j.properties:/opt/hadoop/etc/hadoop/log4j.properties
+    depends_on:
+      - namenode
+    command: [ "/bin/bash", "/init-datanode.sh" ]
+    restart: always
+
+  datanode2:
+    image: apache/hadoop:3.4.3
+    container_name: datanode2
+    hostname: datanode2
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+    volumes:
+      - ./data/datanode2:/opt/hadoop/data/dataNode
+      - ./config:/opt/hadoop/etc/hadoop
+      - ./scripts/init-datanode.sh:/init-datanode.sh
+      - ./config/log4j.properties:/opt/hadoop/etc/hadoop/log4j.properties
+    depends_on:
+      - namenode
+    command: [ "/bin/bash", "/init-datanode.sh" ]
+    restart: always
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -39,3 +93,27 @@ services:
       - .env
     environment:
       KAFKA_BOOTSTRAP_SERVERS: broker:9092
+    restart: on-failure
+
+  streaming:
+    build:
+      context: .
+      dockerfile: src/streaming/Dockerfile
+    container_name: streaming
+    depends_on:
+      - broker
+      - namenode
+      - datanode1
+      - datanode2
+    env_file:
+      - .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: broker:9092
+      OUTPUT_ROOT: /data/air-quality
+      HDFS_NAMENODE_URL: http://namenode:9870
+      HDFS_USER: root
+      LOCAL_STAGING_DIR: /tmp/air-quality
+    volumes:
+      - ./src/__init__.py:/app/src/__init__.py:ro
+      - ./src/streaming:/app/src/streaming:ro
+    restart: on-failure
