@@ -18,7 +18,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 
   namenode:
-    image: apache/hadoop:3.4.1
+    image: apache/hadoop:3.4.3
     container_name: namenode
     hostname: namenode
     user: root
