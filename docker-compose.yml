@@ -117,3 +117,47 @@ services:
       - ./src/__init__.py:/app/src/__init__.py:ro
       - ./src/streaming:/app/src/streaming:ro
     restart: on-failure
+
+#  analytics:
+#    build:
+#      context: .
+#      dockerfile: src/analytics/Dockerfile
+#    container_name: analytics
+#    depends_on:
+#      - namenode
+#      - datanode1
+#      - datanode2
+#    environment:
+#      CITY: sofia
+#      OUTPUT_ROOT: /data/air-quality
+#      AQI_SPIKE_THRESHOLD: 90
+#      AQI_JUMP_THRESHOLD: 30
+#    restart: on-failure
+
+  jupyter:
+    build:
+      context: .
+      dockerfile: src/analytics/Dockerfile
+    container_name: jupyter
+    depends_on:
+      - namenode
+      - datanode1
+      - datanode2
+    environment:
+      CITY: sofia
+      OUTPUT_ROOT: /data/air-quality
+    command:
+      - uv
+      - run
+      - jupyter
+      - notebook
+      - --ip=0.0.0.0
+      - --port=8888
+      - --no-browser
+      - --allow-root
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/app/notebooks
+      - ./src:/app/src
+      - ./README.md:/app/README.md:ro

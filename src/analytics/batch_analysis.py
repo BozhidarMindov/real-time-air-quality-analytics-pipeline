@@ -1,0 +1,141 @@
+import logging
+
+from pyspark.sql import DataFrame
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+from pyspark.sql.types import DoubleType
+from pyspark.sql.types import IntegerType
+from pyspark.sql.types import StringType
+from pyspark.sql.types import StructField
+from pyspark.sql.types import StructType
+
+from src.analytics.metrics import compute_average_pollutants
+from src.analytics.metrics import compute_dominant_pollutant_counts
+from src.analytics.metrics import compute_hourly_aqi
+from src.analytics.metrics import compute_weather_correlations
+from src.analytics.spike_detection import detect_aqi_spikes
+
+
+DEFAULT_HDFS_ROOT = "/data/air-quality"
+DEFAULT_CITY = "sofia"
+DEFAULT_AQI_SPIKE_THRESHOLD = 90
+DEFAULT_AQI_JUMP_THRESHOLD = 30
+
+CURATED_SCHEMA = StructType(
+    [
+        StructField("timestamp", StringType(), True),
+        StructField("station_id", IntegerType(), True),
+        StructField("station_name", StringType(), True),
+        StructField("latitude", DoubleType(), True),
+        StructField("longitude", DoubleType(), True),
+        StructField("aqi", IntegerType(), True),
+        StructField("dominant_pollutant", StringType(), True),
+        StructField("pm10", DoubleType(), True),
+        StructField("no2", DoubleType(), True),
+        StructField("o3", DoubleType(), True),
+        StructField("temperature", DoubleType(), True),
+        StructField("humidity", DoubleType(), True),
+        StructField("wind", DoubleType(), True),
+        StructField("pressure", DoubleType(), True),
+        StructField("dew", DoubleType(), True),
+    ]
+)
+
+
+def build_curated_input_path(output_root: str, city: str) -> str:
+    """Build the curated JSONL input path for a city.
+
+    Args:
+        output_root: The HDFS root path used by the pipeline.
+        city: The city name used in the storage layout.
+
+    Returns:
+        str: The curated JSONL glob path in HDFS.
+    """
+
+    normalized_root = output_root.rstrip("/")
+    return f"hdfs://namenode:9000{normalized_root}/{city}/curated/*.jsonl"
+
+
+def create_spark_session(app_name: str = "air-quality-analytics") -> SparkSession:
+    """Create a Spark session for the analytics batch job.
+
+    Args:
+        app_name: A Spark application name.
+
+    Returns:
+        SparkSession: A configured Spark session.
+    """
+
+    return SparkSession.builder.appName(app_name).getOrCreate()
+
+
+def load_curated_dataframe(spark: SparkSession, output_root: str, city: str) -> DataFrame:
+    """Load curated AQICN JSONL records from HDFS.
+
+    Args:
+        spark: A Spark session.
+        output_root: An HDFS root output path.
+        city: A city name used in the storage layout.
+
+    Returns:
+        DataFrame: A curated Spark DataFrame.
+    """
+
+    input_path = build_curated_input_path(output_root, city)
+    return spark.read.schema(CURATED_SCHEMA).json(input_path)
+
+
+def normalize_curated_dataframe(dataframe: DataFrame) -> DataFrame:
+    """Normalize curated AQICN records for analytics.
+
+    Args:
+        dataframe: A curated Spark DataFrame with a timestamp column.
+
+    Returns:
+        DataFrame: A DataFrame with parsed timestamp, hour, and day columns.
+    """
+
+    parsed = dataframe.withColumn("event_timestamp", F.expr("try_to_timestamp(timestamp)"))
+    return (
+        parsed.withColumn("day", F.date_format(F.col("event_timestamp"), "yyyy-MM-dd"))
+        .withColumn("hour", F.hour(F.col("event_timestamp")))
+    )
+
+
+def run_batch_analysis(
+    spark: SparkSession,
+    output_root: str,
+    city: str,
+    aqi_threshold: int = DEFAULT_AQI_SPIKE_THRESHOLD,
+    jump_threshold: int = DEFAULT_AQI_JUMP_THRESHOLD,
+) -> dict[str, DataFrame]:
+    """Run the batch analytics pipeline for a city.
+
+    Args:
+        spark: A Spark session.
+        output_root: An HDFS root output path.
+        city: A city name used in the storage layout.
+        aqi_threshold: A spike threshold used in spike detection.
+        jump_threshold: A sudden-increase threshold used in spike detection.
+
+    Returns:
+        dict[str, DataFrame]: The analytics result tables.
+    """
+
+    logger = logging.getLogger("air_quality.analytics")
+    curated = load_curated_dataframe(spark, output_root, city)
+    normalized = normalize_curated_dataframe(curated)
+    logger.info(f"Loaded curated analytics data for {city} from {build_curated_input_path(output_root, city)}")
+    return {
+        "normalized": normalized,
+        "hourly_aqi": compute_hourly_aqi(normalized),
+        "average_pollutants": compute_average_pollutants(normalized),
+        "dominant_pollutants": compute_dominant_pollutant_counts(normalized),
+        "weather_correlations": compute_weather_correlations(normalized),
+        "aqi_spikes": detect_aqi_spikes(
+            normalized,
+            aqi_threshold=aqi_threshold,
+            jump_threshold=jump_threshold,
+        ),
+    }
