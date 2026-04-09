@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "air-quality-streaming"
+version = "0.1.0"
+description = "Kafka consumer and HDFS writer for the real-time air quality pipeline"
+requires-python = ">=3.11"
+dependencies = [
+    "kafka-python>=2.3.0",
+    "requests>=2.33.1",
+]
+
+[tool.setuptools.packages.find]
+include = ["src*"]

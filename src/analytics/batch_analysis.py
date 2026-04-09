@@ -103,6 +103,19 @@ def normalize_curated_dataframe(dataframe: DataFrame) -> DataFrame:
     )
 
 
+def to_pandas_table(dataframe: DataFrame):
+    """Convert a Spark DataFrame to a pandas DataFrame for notebook display.
+
+    Args:
+        dataframe: A Spark DataFrame.
+
+    Returns:
+        pandas.DataFrame: A pandas DataFrame.
+    """
+
+    return dataframe.toPandas()
+
+
 def run_batch_analysis(
     spark: SparkSession,
     output_root: str,

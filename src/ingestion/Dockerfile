@@ -8,7 +8,8 @@ RUN pip install --no-cache-dir uv==${UV_VERSION}
 
 ENV UV_NO_DEV=1
 
-COPY pyproject.toml uv.lock README.md ./
+COPY src/ingestion/pyproject.toml ./pyproject.toml
+COPY src/ingestion/uv.lock ./uv.lock
 COPY scripts/run_producer.py ./scripts/run_producer.py
 COPY src/__init__.py ./src/__init__.py
 COPY src/ingestion ./src/ingestion
