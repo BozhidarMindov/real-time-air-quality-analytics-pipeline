@@ -24,13 +24,18 @@ def test_main_reads_environment_and_forwards_values(mocker):
     }
     consumer_instance = mocker.Mock()
     consumer_class = mocker.patch.object(run_streaming, "Consumer", return_value=consumer_instance)
-    basic_config = mocker.patch.object(run_streaming.logging, "basicConfig")
-    mocker.patch.object(run_streaming.os, "getenv", side_effect=lambda key, default=None: env_values.get(key, default))
+    configure_logging = mocker.patch.object(run_streaming, "configure_logging")
+    get_env_or_default = mocker.patch.object(
+        run_streaming,
+        "get_env_or_default",
+        side_effect=lambda key, default: env_values.get(key) or default,
+    )
 
     result = run_streaming.main()
 
     assert result == 0
-    basic_config.assert_called_once()
+    configure_logging.assert_called_once_with()
+    assert get_env_or_default.call_count == 8
     consumer_class.assert_called_once_with(
         aqicn_api_token="",
         city="varna",
@@ -59,8 +64,12 @@ def test_main_uses_streaming_defaults_when_env_is_missing_or_blank(mocker):
     }
     consumer_instance = mocker.Mock()
     consumer_class = mocker.patch.object(run_streaming, "Consumer", return_value=consumer_instance)
-    mocker.patch.object(run_streaming.logging, "basicConfig")
-    mocker.patch.object(run_streaming.os, "getenv", side_effect=lambda key, default=None: env_values.get(key, default))
+    mocker.patch.object(run_streaming, "configure_logging")
+    mocker.patch.object(
+        run_streaming,
+        "get_env_or_default",
+        side_effect=lambda key, default: env_values.get(key) or default,
+    )
 
     result = run_streaming.main()
 
@@ -77,13 +86,3 @@ def test_main_uses_streaming_defaults_when_env_is_missing_or_blank(mocker):
         local_staging_dir=run_streaming.DEFAULT_LOCAL_STAGING_DIR,
     )
     consumer_instance.run.assert_called_once_with()
-
-
-def test_run_cli_calls_main(mocker):
-    run_streaming = _load_run_streaming_module()
-    main_mock = mocker.patch.object(run_streaming, "main", return_value=0)
-
-    result = run_streaming.run_cli()
-
-    assert result == 0
-    main_mock.assert_called_once_with()

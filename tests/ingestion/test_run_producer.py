@@ -27,14 +27,19 @@ def test_main_reads_environment_and_starts_producer(mocker):
     producer_instance = mocker.Mock()
     producer_class = mocker.patch.object(run_producer, "Producer", return_value=producer_instance)
     load_dotenv = mocker.patch.object(run_producer, "load_dotenv")
-    basic_config = mocker.patch.object(run_producer.logging, "basicConfig")
-    mocker.patch.object(run_producer.os, "getenv", side_effect=lambda key, default=None: env_values.get(key, default))
+    configure_logging = mocker.patch.object(run_producer, "configure_logging")
+    get_env_or_default = mocker.patch.object(
+        run_producer,
+        "get_env_or_default",
+        side_effect=lambda key, default: env_values.get(key) or default,
+    )
 
     result = run_producer.main()
 
     assert result == 0
     load_dotenv.assert_called_once_with(dotenv_path=run_producer.DEFAULT_ENV_PATH)
-    basic_config.assert_called_once()
+    configure_logging.assert_called_once_with()
+    assert get_env_or_default.call_count == 9
     producer_class.assert_called_once_with(
         aqicn_api_token="token",
         city="varna",
@@ -65,8 +70,12 @@ def test_main_uses_defaults_when_producer_env_is_missing_or_blank(mocker):
     producer_instance = mocker.Mock()
     producer_class = mocker.patch.object(run_producer, "Producer", return_value=producer_instance)
     mocker.patch.object(run_producer, "load_dotenv")
-    mocker.patch.object(run_producer.logging, "basicConfig")
-    mocker.patch.object(run_producer.os, "getenv", side_effect=lambda key, default=None: env_values.get(key, default))
+    mocker.patch.object(run_producer, "configure_logging")
+    mocker.patch.object(
+        run_producer,
+        "get_env_or_default",
+        side_effect=lambda key, default: env_values.get(key) or default,
+    )
 
     result = run_producer.main()
 
@@ -83,13 +92,3 @@ def test_main_uses_defaults_when_producer_env_is_missing_or_blank(mocker):
         retry_backoff_seconds=5,
     )
     producer_instance.run.assert_called_once_with()
-
-
-def test_run_cli_calls_main(mocker):
-    run_producer = _load_run_producer_module()
-    main_mock = mocker.patch.object(run_producer, "main", return_value=0)
-
-    result = run_producer.run_cli()
-
-    assert result == 0
-    main_mock.assert_called_once_with()
