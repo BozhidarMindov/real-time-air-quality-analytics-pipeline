@@ -5,16 +5,15 @@ import requests
 class AQICNClient:
     """A client that fetches raw AQICN air quality payloads for a city.
 
-    Args:
-        api_token: An AQICN API token.
-        base_url: A base AQICN feed URL.
-        request_timeout_seconds: A request timeout in seconds.
-        retry_attempts: A number of retry attempts for transient failures.
-        retry_backoff_seconds: A delay between retries in seconds.
-        session: An optional HTTP session. When omitted, a requests session is created.
-        sleep: A sleep function used between retries.
+    Attributes:
+        api_token: The AQICN API token used in feed requests.
+        base_url: The normalized AQICN feed URL prefix.
+        request_timeout_seconds: The timeout applied to each HTTP request.
+        retry_attempts: The maximum number of fetch attempts for one call.
+        retry_backoff_seconds: The delay between retry attempts.
+        session: The request helper used for AQICN calls.
+        sleep: The sleep function used between retry attempts.
     """
-
     def __init__(
         self,
         api_token: str,
@@ -25,6 +24,17 @@ class AQICNClient:
         session=None,
         sleep=time.sleep,
     ) -> None:
+        """Initialize the AQICN client.
+
+        Args:
+            api_token: An AQICN API token.
+            base_url: A base AQICN feed URL.
+            request_timeout_seconds: A request timeout in seconds.
+            retry_attempts: A number of retry attempts for transient failures.
+            retry_backoff_seconds: A delay between retries in seconds.
+            session: An optional request helper. When omitted, a default helper is created.
+            sleep: A sleep function used between retries.
+        """
         self.api_token = api_token
         self.base_url = base_url.rstrip("/")
         self.request_timeout_seconds = request_timeout_seconds
@@ -42,13 +52,13 @@ class AQICNClient:
             city: A city identifier used in the AQICN feed URL.
 
         Returns:
-            dict: A raw AQICN response payload.
+            The raw AQICN response payload.
 
         Raises:
             ValueError: A token error when the API token is missing.
-            Exception: A final request or response error after all retries fail.
+            RuntimeError: An AQICN status error when the API response is not successful.
+            Exception: The last request or response error after the final retry fails.
         """
-
         if not self.api_token:
             raise ValueError("AQICN_API_TOKEN is required")
 

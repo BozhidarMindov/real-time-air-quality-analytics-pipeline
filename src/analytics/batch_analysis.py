@@ -50,9 +50,8 @@ def build_curated_input_path(output_root: str, city: str) -> str:
         city: The city name used in the storage layout.
 
     Returns:
-        str: The curated JSONL glob path in HDFS.
+        The curated JSONL glob path in HDFS.
     """
-
     normalized_root = output_root.rstrip("/")
     return f"hdfs://namenode:9000{normalized_root}/{city}/curated/*.jsonl"
 
@@ -61,12 +60,11 @@ def create_spark_session(app_name: str = "air-quality-analytics") -> SparkSessio
     """Create a Spark session for the analytics batch job.
 
     Args:
-        app_name: A Spark application name.
+        app_name: The application name shown by the analytics job.
 
     Returns:
-        SparkSession: A configured Spark session.
+        The analytics session used for the batch job.
     """
-
     return SparkSession.builder.appName(app_name).getOrCreate()
 
 
@@ -74,14 +72,13 @@ def load_curated_dataframe(spark: SparkSession, output_root: str, city: str) -> 
     """Load curated AQICN JSONL records from HDFS.
 
     Args:
-        spark: A Spark session.
+        spark: The analytics session used to read curated records.
         output_root: An HDFS root output path.
         city: A city name used in the storage layout.
 
     Returns:
-        DataFrame: A curated Spark DataFrame.
+        A Spark dataframe with the curated records loaded from HDFS.
     """
-
     input_path = build_curated_input_path(output_root, city)
     return spark.read.schema(CURATED_SCHEMA).json(input_path)
 
@@ -90,12 +87,11 @@ def normalize_curated_dataframe(dataframe: DataFrame) -> DataFrame:
     """Normalize curated AQICN records for analytics.
 
     Args:
-        dataframe: A curated Spark DataFrame with a timestamp column.
+        dataframe: The curated records that include the source timestamp column.
 
     Returns:
-        DataFrame: A DataFrame with parsed timestamp, hour, and day columns.
+        A Spark dataframe with parsed timestamp, hour, and day columns.
     """
-
     parsed = dataframe.withColumn("event_timestamp", F.expr("try_to_timestamp(timestamp)"))
     return (
         parsed.withColumn("day", F.date_format(F.col("event_timestamp"), "yyyy-MM-dd"))
@@ -104,15 +100,14 @@ def normalize_curated_dataframe(dataframe: DataFrame) -> DataFrame:
 
 
 def to_pandas_table(dataframe: DataFrame):
-    """Convert a Spark DataFrame to a pandas DataFrame for notebook display.
+    """Convert analytics results into a notebook-friendly table.
 
     Args:
-        dataframe: A Spark DataFrame.
+        dataframe: The analytics result to convert for notebook display.
 
     Returns:
-        pandas.DataFrame: A pandas DataFrame.
+        A pandas dataframe for notebook display.
     """
-
     return dataframe.toPandas()
 
 
@@ -126,16 +121,15 @@ def run_batch_analysis(
     """Run the batch analytics pipeline for a city.
 
     Args:
-        spark: A Spark session.
+        spark: The analytics session used to read curated records and run the reports.
         output_root: An HDFS root output path.
         city: A city name used in the storage layout.
         aqi_threshold: A spike threshold used in spike detection.
         jump_threshold: A sudden-increase threshold used in spike detection.
 
     Returns:
-        dict[str, DataFrame]: The analytics result tables.
+        A dictionary of Spark dataframes keyed by report name.
     """
-
     logger = logging.getLogger("air_quality.analytics")
     curated = load_curated_dataframe(spark, output_root, city)
     normalized = normalize_curated_dataframe(curated)

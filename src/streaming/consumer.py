@@ -29,9 +29,8 @@ def default_processing_date() -> str:
     """Return the default processing date string.
 
     Returns:
-        str: The current date in `YYYY-MM-DD` format.
+        The current date in `YYYY-MM-DD` format.
     """
-
     return date.today().isoformat()
 
 
@@ -43,25 +42,23 @@ def join_hdfs_root(root: Path | str, *parts: str) -> str:
         *parts: Additional HDFS path parts.
 
     Returns:
-        str: A normalized HDFS path.
+        The normalized HDFS path.
     """
-
     base = normalize_hdfs_path(root)
     suffix = "/".join(part.strip("/") for part in parts if part)
     return f"{base}/{suffix}" if suffix else base
 
 
 def get_nested(mapping: dict | None, *keys: str):
-    """Return a nested dictionary value when present.
+    """Return a nested value when present.
 
     Args:
-        mapping: A dictionary-like mapping.
+        mapping: A mapping that may contain nested values.
         *keys: A sequence of nested keys.
 
     Returns:
-        Any: A nested value or `None`.
+        The nested value when every key exists, or `None` otherwise.
     """
-
     current = mapping
     for key in keys:
         if not isinstance(current, dict):
@@ -71,8 +68,28 @@ def get_nested(mapping: dict | None, *keys: str):
 
 
 class Consumer:
-    """A Kafka consumer that writes raw and curated JSON data to HDFS."""
+    """A Kafka consumer that writes raw and curated JSON data to HDFS.
 
+    Attributes:
+        aqicn_api_token: The unused AQICN token placeholder kept for config symmetry.
+        city: The city name used in HDFS output paths.
+        kafka_bootstrap_servers: The configured Kafka bootstrap server list.
+        kafka_topic: The Kafka topic consumed by the streaming job.
+        output_root: The root HDFS path used for daily output files.
+        processing_date: The fallback day used when a payload timestamp is missing.
+        hdfs_namenode_url: The Namenode WebHDFS base URL.
+        hdfs_user: The HDFS user name sent with WebHDFS requests.
+        local_staging_dir: The compatibility staging path preserved for config stability.
+        consumer_group: The Kafka consumer group id.
+        poll_timeout_ms: The Kafka poll timeout in milliseconds.
+        batch_size: The maximum number of messages requested per poll.
+        kafka_connect_retry_attempts: The maximum number of Kafka connection attempts.
+        kafka_connect_retry_backoff_seconds: The delay between Kafka connection attempts.
+        logger: The application logger for streaming events.
+        sleep: The sleep function used between Kafka connection attempts.
+        kafka_consumer: The Kafka consumer used to read source messages.
+        hdfs_client: The WebHDFS client used to persist raw and curated records.
+    """
     def __init__(
         self,
         aqicn_api_token: str = "",
@@ -112,7 +129,6 @@ class Consumer:
             logger: An optional application logger.
             sleep: A sleep function used between Kafka connection attempts.
         """
-
         self.aqicn_api_token = aqicn_api_token
         self.city = city
         self.kafka_bootstrap_servers = kafka_bootstrap_servers
@@ -137,8 +153,10 @@ class Consumer:
 
         Args:
             iterations: An optional number of polling iterations.
-        """
 
+        Returns:
+            None.
+        """
         completed = 0
         try:
             while iterations is None or completed < iterations:
@@ -151,9 +169,8 @@ class Consumer:
         """Consume one Kafka batch and write it to HDFS.
 
         Returns:
-            dict[str, dict[str, list[dict]]]: The grouped raw and curated records by day.
+            The grouped raw and curated records for each processed day.
         """
-
         polled_records = self.kafka_consumer.poll(
             timeout_ms=self.poll_timeout_ms,
             max_records=self.batch_size,
@@ -174,12 +191,11 @@ class Consumer:
         """Group Kafka messages into raw and curated records by day.
 
         Args:
-            messages: A list of Kafka message payloads.
+            messages: The Kafka message payloads to group by day.
 
         Returns:
-            dict[str, dict[str, list[dict]]]: The grouped raw and curated records.
+            The grouped raw and curated records keyed by day.
         """
-
         grouped_records: dict[str, dict[str, list[dict]]] = defaultdict(
             lambda: {"raw_records": [], "curated_records": []}
         )
@@ -205,9 +221,8 @@ class Consumer:
             payload: A raw AQICN payload.
 
         Returns:
-            dict: A curated record with the required analytics fields.
+            The curated record with the required analytics fields.
         """
-
         data = payload.get("data") if isinstance(payload, dict) else {}
         if not isinstance(data, dict):
             data = {}
@@ -237,9 +252,8 @@ class Consumer:
             payload: A raw AQICN payload.
 
         Returns:
-            str: A day string in `YYYY-MM-DD` format.
+            The day string in `YYYY-MM-DD` format.
         """
-
         timestamp = get_nested(payload, "data", "time", "iso")
         if isinstance(timestamp, str) and len(timestamp) >= 10:
             return timestamp[:10]
@@ -252,9 +266,8 @@ class Consumer:
             day: A day string in `YYYY-MM-DD` format.
 
         Returns:
-            str: An HDFS path for the daily raw JSON file.
+            The HDFS path for the daily raw JSON file.
         """
-
         return join_hdfs_root(self.output_root, self.city, "raw", f"{day}.jsonl")
 
     def build_curated_output_path(self, day: str) -> str:
@@ -264,22 +277,20 @@ class Consumer:
             day: A day string in `YYYY-MM-DD` format.
 
         Returns:
-            str: An HDFS path for the daily curated JSON Lines file.
+            The HDFS path for the daily curated JSON Lines file.
         """
-
         return join_hdfs_root(self.output_root, self.city, "curated", f"{day}.jsonl")
 
     def write_raw_records(self, records: list[dict], day: str) -> str | None:
         """Write raw JSON records to the daily HDFS JSON Lines file.
 
         Args:
-            records: A list of raw payloads.
+            records: The raw payloads to append for the requested day.
             day: A day string in `YYYY-MM-DD` format.
 
         Returns:
-            str | None: An HDFS file path when records were written.
+            The written HDFS file path, or `None` when there is nothing to write.
         """
-
         if not records:
             return None
 
@@ -296,13 +307,12 @@ class Consumer:
         """Write curated records to the daily HDFS JSON Lines file.
 
         Args:
-            curated_records: A list of curated records.
+            curated_records: The curated records to append for the requested day.
             day: A day string in `YYYY-MM-DD` format.
 
         Returns:
-            str | None: An HDFS file path when records were written.
+            The written HDFS file path, or `None` when there is nothing to write.
         """
-
         if not curated_records:
             return None
 
@@ -323,9 +333,8 @@ class Consumer:
             index: A zero-based geo array index.
 
         Returns:
-            Any: A geo value or `None`.
+            The geo value at the requested position, or `None` when it is missing.
         """
-
         geo = get_nested(data, "city", "geo")
         if isinstance(geo, list) and len(geo) > index:
             return geo[index]
@@ -339,18 +348,19 @@ class Consumer:
             key: An `iaqi` field name.
 
         Returns:
-            Any: A nested `iaqi` value or `None`.
+            The nested `iaqi` value, or `None` when it is missing.
         """
-
         return get_nested(data, "iaqi", key, "v")
 
     def _create_kafka_consumer(self):
         """Create the Kafka consumer used by the streaming consumer.
 
         Returns:
-            KafkaConsumer: A configured Kafka consumer instance.
-        """
+            The reader used for streaming messages.
 
+        Raises:
+            NoBrokersAvailable: A connection error after all Kafka retry attempts are exhausted.
+        """
         bootstrap_servers = [
             server.strip()
             for server in self.kafka_bootstrap_servers.split(",")
@@ -385,9 +395,8 @@ class Consumer:
         """Create the HDFS client used by the streaming consumer.
 
         Returns:
-            HDFSClient: A configured HDFS client instance.
+            The writer used for HDFS persistence.
         """
-
         return HDFSClient(
             namenode_url=self.hdfs_namenode_url,
             user=self.hdfs_user,

@@ -10,18 +10,16 @@ from kafka import KafkaProducer
 class Producer:
     """A producer that publishes raw AQICN payloads to Kafka.
 
-    Args:
-        aqicn_api_token: An AQICN API token.
-        city: A city name passed to the AQICN feed endpoint.
-        poll_interval_seconds: A delay between producer polling attempts.
-        kafka_bootstrap_servers: A comma-separated list of Kafka bootstrap servers.
-        kafka_topic: A Kafka topic for raw ingestion messages.
-        aqicn_base_url: A base AQICN feed URL.
-        request_timeout_seconds: A request timeout in seconds.
-        retry_attempts: A number of AQICN retry attempts.
-        retry_backoff_seconds: A delay between AQICN retry attempts.
+    Attributes:
+        city: The city requested from the AQICN feed.
+        poll_interval_seconds: The delay between producer polling attempts.
+        kafka_bootstrap_servers: The configured Kafka bootstrap server list.
+        kafka_topic: The Kafka topic that receives raw payloads.
+        aqicn_client: The AQICN client used to fetch source payloads.
+        kafka_producer: The Kafka producer used to publish payloads.
+        logger: The application logger for ingestion events.
+        sleep: The sleep function used between polling iterations.
     """
-
     def __init__(
         self,
         aqicn_api_token: str,
@@ -34,6 +32,19 @@ class Producer:
         retry_attempts: int = 3,
         retry_backoff_seconds: int = 5,
     ) -> None:
+        """Initialize the ingestion producer.
+
+        Args:
+            aqicn_api_token: An AQICN API token.
+            city: A city name passed to the AQICN feed endpoint.
+            poll_interval_seconds: A delay between producer polling attempts.
+            kafka_bootstrap_servers: A comma-separated list of Kafka bootstrap servers.
+            kafka_topic: A Kafka topic for raw ingestion messages.
+            aqicn_base_url: A base AQICN feed URL.
+            request_timeout_seconds: A request timeout in seconds.
+            retry_attempts: A number of AQICN retry attempts.
+            retry_backoff_seconds: A delay between AQICN retry attempts.
+        """
         self.city = city
         self.poll_interval_seconds = poll_interval_seconds
         self.kafka_bootstrap_servers = kafka_bootstrap_servers
@@ -53,9 +64,8 @@ class Producer:
         """Fetches one payload and publishes it to Kafka.
 
         Returns:
-            dict: A raw AQICN response payload that was published.
+            The raw AQICN response payload that was published.
         """
-
         payload = self.aqicn_client.fetch_city_feed(self.city)
         message = json.dumps(payload).encode("utf-8")
         self.kafka_producer.send(self.kafka_topic, value=message)
@@ -68,8 +78,10 @@ class Producer:
 
         Args:
             iterations: An optional number of iterations for bounded execution.
-        """
 
+        Returns:
+            None.
+        """
         completed = 0
         while iterations is None or completed < iterations:
             self.publish_once()
@@ -81,7 +93,7 @@ class Producer:
         """Creates the Kafka producer used by the ingestion producer.
 
         Returns:
-            KafkaProducer: A configured Kafka producer instance.
+            The publisher used for raw ingestion messages.
         """
         bootstrap_servers = [
             server.strip()

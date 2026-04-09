@@ -10,11 +10,29 @@ from src.analytics.batch_analysis import run_batch_analysis
 
 
 def _getenv_or_default(key: str, default: str | None) -> str | None:
+    """Return an environment value when present or fall back to a default.
+
+    Args:
+        key: The environment variable name to read.
+        default: The fallback value used when the variable is missing or empty.
+
+    Returns:
+        The configured environment value or the fallback.
+    """
     value = os.getenv(key)
     return value if value else default
 
 
 def _getenv_int_or_default(key: str, default: int) -> int:
+    """Return an integer environment value when present or fall back to a default.
+
+    Args:
+        key: The environment variable name to read.
+        default: The fallback value used when the variable is missing or empty.
+
+    Returns:
+        The configured integer value or the fallback.
+    """
     value = os.getenv(key)
     if not value:
         return default
@@ -22,8 +40,11 @@ def _getenv_int_or_default(key: str, default: int) -> int:
 
 
 def main() -> int:
-    """Run the batch analytics job."""
+    """Run the batch analytics job.
 
+    Returns:
+        The process exit code.
+    """
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
@@ -49,8 +70,11 @@ def main() -> int:
 
 
 def run_cli() -> int:
-    """Run the command-line analytics entrypoint."""
+    """Run the command-line analytics entrypoint.
 
+    Returns:
+        The process exit code.
+    """
     return main()
 
 

@@ -12,11 +12,25 @@ from src.streaming.hdfs_client import DEFAULT_HDFS_USER
 
 
 def _getenv_or_default(key: str, default: str | None) -> str | None:
+    """Return an environment value when present or fall back to a default.
+
+    Args:
+        key: The environment variable name to read.
+        default: The fallback value used when the variable is missing or empty.
+
+    Returns:
+        The configured environment value or the fallback.
+    """
     value = os.getenv(key)
     return value if value else default
 
 
 def main() -> int:
+    """Run the streaming consumer entrypoint.
+
+    Returns:
+        The process exit code.
+    """
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
@@ -61,6 +75,11 @@ def main() -> int:
 
 
 def run_cli() -> int:
+    """Run the streaming command-line wrapper.
+
+    Returns:
+        The process exit code.
+    """
     return main()
 
 

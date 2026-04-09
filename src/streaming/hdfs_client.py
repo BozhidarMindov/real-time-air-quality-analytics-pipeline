@@ -15,9 +15,8 @@ def normalize_hdfs_path(path: Path | str) -> str:
         path: A local-style or HDFS-style path value.
 
     Returns:
-        str: An absolute HDFS path without a trailing slash.
+        The absolute HDFS path without a trailing slash.
     """
-
     value = path.as_posix() if isinstance(path, Path) else str(path)
     value = value.strip()
     if value.startswith("hdfs://"):
@@ -32,8 +31,14 @@ def normalize_hdfs_path(path: Path | str) -> str:
 
 
 class HDFSClient:
-    """A small WebHDFS client used by the streaming consumer."""
+    """A small WebHDFS client used by the streaming consumer.
 
+    Attributes:
+        namenode_url: The normalized Namenode WebHDFS base URL.
+        user: The HDFS user name sent with requests.
+        session: The request helper used for WebHDFS calls.
+        timeout_seconds: The timeout applied to each HTTP request.
+    """
     def __init__(
         self,
         namenode_url: str = DEFAULT_HDFS_NAMENODE_URL,
@@ -46,10 +51,9 @@ class HDFSClient:
         Args:
             namenode_url: A Namenode WebHDFS base URL.
             user: An HDFS user name.
-            session: An optional HTTP session.
+            session: An optional request helper.
             timeout_seconds: An HTTP timeout in seconds.
         """
-
         self.namenode_url = namenode_url.rstrip("/")
         self.user = user
         self.session = session or requests.Session()
@@ -62,9 +66,8 @@ class HDFSClient:
             path: An HDFS path.
 
         Returns:
-            bool: A flag indicating whether the path exists.
+            Whether the path exists.
         """
-
         response = self.session.get(
             self._build_url(path),
             params={"op": "GETFILESTATUS", "user.name": self.user},
@@ -81,8 +84,10 @@ class HDFSClient:
 
         Args:
             path: An HDFS directory path.
-        """
 
+        Returns:
+            None.
+        """
         response = self.session.put(
             self._build_url(path),
             params={"op": "MKDIRS", "user.name": self.user},
@@ -96,8 +101,10 @@ class HDFSClient:
         Args:
             path: An HDFS file path.
             content: A UTF-8 text payload.
-        """
 
+        Returns:
+            None.
+        """
         self._write_bytes(path, content.encode("utf-8"), op="CREATE")
 
     def append_text(self, path: Path | str, content: str) -> None:
@@ -106,8 +113,10 @@ class HDFSClient:
         Args:
             path: An HDFS file path.
             content: A UTF-8 text payload.
-        """
 
+        Returns:
+            None.
+        """
         self._write_bytes(path, content.encode("utf-8"), op="APPEND")
 
     def upload_file(self, local_path: Path | str, remote_path: Path | str) -> None:
@@ -116,8 +125,10 @@ class HDFSClient:
         Args:
             local_path: A local file path.
             remote_path: An HDFS file path.
-        """
 
+        Returns:
+            None.
+        """
         self._write_bytes(remote_path, Path(local_path).read_bytes(), op="CREATE")
 
     def _build_url(self, path: Path | str) -> str:
@@ -127,9 +138,8 @@ class HDFSClient:
             path: An HDFS path.
 
         Returns:
-            str: A WebHDFS URL.
+            The request URL for the provided path.
         """
-
         normalized_path = normalize_hdfs_path(path)
         return f"{self.namenode_url}/webhdfs/v1{quote(normalized_path, safe='/')}"
 
@@ -140,8 +150,13 @@ class HDFSClient:
             path: An HDFS file path.
             data: A binary payload to write.
             op: A WebHDFS write operation name.
-        """
 
+        Returns:
+            None.
+
+        Raises:
+            RuntimeError: A redirect error when WebHDFS does not return a datanode location.
+        """
         request_method = self.session.put if op == "CREATE" else self.session.post
         params = {"op": op, "user.name": self.user}
         if op == "CREATE":

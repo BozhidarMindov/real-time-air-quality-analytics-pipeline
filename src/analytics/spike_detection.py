@@ -7,14 +7,13 @@ def detect_aqi_spikes(dataframe: DataFrame, aqi_threshold: int, jump_threshold: 
     """Detect AQI spikes by threshold and by sudden increases.
 
     Args:
-        dataframe: A normalized curated Spark DataFrame.
+        dataframe: The normalized curated records.
         aqi_threshold: A fixed AQI threshold for alert rows.
         jump_threshold: A minimum AQI increase between consecutive rows.
 
     Returns:
-        DataFrame: A DataFrame containing only spike rows.
+        A Spark dataframe containing the rows that exceed the threshold or sudden-jump rule.
     """
-
     window_spec = Window.partitionBy("station_id").orderBy("event_timestamp")
     with_previous = dataframe.withColumn("previous_aqi", F.lag("aqi").over(window_spec))
     enriched = (

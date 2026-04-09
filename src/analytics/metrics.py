@@ -3,8 +3,15 @@ from pyspark.sql import functions as F
 
 
 def _safe_corr(left_column: str, right_column: str):
-    """Return a correlation aggregate that yields null for degenerate series."""
+    """Return a correlation aggregate that yields null for degenerate series.
 
+    Args:
+        left_column: The first metric used in the correlation calculation.
+        right_column: The second metric used in the correlation calculation.
+
+    Returns:
+        The correlation expression that tolerates degenerate input series.
+    """
     return F.expr(
         "try_divide("
         f"covar_samp({left_column}, {right_column}), "
@@ -17,12 +24,11 @@ def compute_hourly_aqi(dataframe: DataFrame) -> DataFrame:
     """Compute the average AQI for each hour bucket.
 
     Args:
-        dataframe: A normalized curated Spark DataFrame.
+        dataframe: The normalized curated records.
 
     Returns:
-        DataFrame: A DataFrame ordered by hour with average AQI values.
+        A Spark dataframe with hourly AQI values ordered by hour.
     """
-
     return (
         dataframe.where(F.col("hour").isNotNull())
         .groupBy("hour")
@@ -35,12 +41,11 @@ def compute_average_pollutants(dataframe: DataFrame) -> DataFrame:
     """Compute the average pollutant values used in the report.
 
     Args:
-        dataframe: A normalized curated Spark DataFrame.
+        dataframe: The normalized curated records.
 
     Returns:
-        DataFrame: A one-row DataFrame with pollutant averages.
+        A Spark dataframe with the pollutant averages used in the report.
     """
-
     return dataframe.agg(
         F.avg("pm10").alias("avg_pm10"),
         F.avg("no2").alias("avg_no2"),
@@ -52,12 +57,11 @@ def compute_dominant_pollutant_counts(dataframe: DataFrame) -> DataFrame:
     """Count dominant pollutant values ordered by frequency.
 
     Args:
-        dataframe: A normalized curated Spark DataFrame.
+        dataframe: The normalized curated records.
 
     Returns:
-        DataFrame: A DataFrame with dominant pollutant counts.
+        A Spark dataframe with dominant pollutant counts ordered by frequency.
     """
-
     return (
         dataframe.where(F.col("dominant_pollutant").isNotNull())
         .groupBy("dominant_pollutant")
@@ -70,12 +74,11 @@ def compute_weather_correlations(dataframe: DataFrame) -> DataFrame:
     """Compute weather correlations against AQI.
 
     Args:
-        dataframe: A normalized curated Spark DataFrame.
+        dataframe: The normalized curated records.
 
     Returns:
-        DataFrame: A one-row DataFrame with AQI correlation values.
+        A Spark dataframe with AQI correlation values for the weather metrics.
     """
-
     return dataframe.agg(
         _safe_corr("aqi", "temperature").alias("aqi_temperature_corr"),
         _safe_corr("aqi", "humidity").alias("aqi_humidity_corr"),
