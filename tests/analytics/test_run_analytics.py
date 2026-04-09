@@ -2,7 +2,6 @@ import importlib.util
 from pathlib import Path
 
 from src.analytics import batch_analysis
-from src.reporting import notebook_helpers
 
 
 def _load_run_analytics_module():
@@ -76,7 +75,7 @@ def test_run_batch_analysis_returns_expected_summary_keys(spark_session, mocker)
 def test_to_pandas_table_returns_pandas_dataframe(spark_session):
     source = spark_session.createDataFrame([{"hour": 10, "avg_aqi": 70.0}])
 
-    result = notebook_helpers.to_pandas_table(source)
+    result = batch_analysis.to_pandas_table(source)
 
     assert result.to_dict("records") == [{"hour": 10, "avg_aqi": 70.0}]
 
