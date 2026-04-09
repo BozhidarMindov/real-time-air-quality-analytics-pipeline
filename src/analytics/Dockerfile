@@ -1,4 +1,4 @@
-FROM quay.io/jupyter/pyspark-notebook
+FROM quay.io/jupyter/pyspark-notebook:2026-04-06
 
 USER root
 
