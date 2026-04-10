@@ -1,35 +1,32 @@
 services:
-  broker:
+  kafka-broker:
     image: apache/kafka:4.0.2
-    container_name: broker
     ports:
       - "9094:9094"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:9094
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092,PLAINTEXT_HOST://localhost:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker:9092,PLAINTEXT_HOST://localhost:9094
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:9093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-broker:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 
   namenode:
     image: apache/hadoop:3.4.3
-    container_name: namenode
     hostname: namenode
     user: root
     environment:
       - HADOOP_HOME=/opt/hadoop
       - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
     volumes:
-      - ./data/namenode:/opt/hadoop/data/nameNode
+      - namenode_data:/opt/hadoop/data/nameNode
       - ./config:/opt/hadoop/etc/hadoop
       - ./scripts/start-hdfs.sh:/start-hdfs.sh
-      - ./config/log4j.properties:/opt/hadoop/etc/hadoop/log4j.properties
     ports:
       - "9870:9870"
     command: [ "/bin/bash", "/start-hdfs.sh" ]
@@ -37,17 +34,15 @@ services:
 
   datanode1:
     image: apache/hadoop:3.4.3
-    container_name: datanode1
     hostname: datanode1
     user: root
     environment:
       - HADOOP_HOME=/opt/hadoop
       - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
     volumes:
-      - ./data/datanode1:/opt/hadoop/data/dataNode
+      - datanode1_data:/opt/hadoop/data/dataNode
       - ./config:/opt/hadoop/etc/hadoop
       - ./scripts/init-datanode.sh:/init-datanode.sh
-      - ./config/log4j.properties:/opt/hadoop/etc/hadoop/log4j.properties
     depends_on:
       - namenode
     command: [ "/bin/bash", "/init-datanode.sh" ]
@@ -55,17 +50,15 @@ services:
 
   datanode2:
     image: apache/hadoop:3.4.3
-    container_name: datanode2
     hostname: datanode2
     user: root
     environment:
       - HADOOP_HOME=/opt/hadoop
       - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
     volumes:
-      - ./data/datanode2:/opt/hadoop/data/dataNode
+      - datanode2_data:/opt/hadoop/data/dataNode
       - ./config:/opt/hadoop/etc/hadoop
       - ./scripts/init-datanode.sh:/init-datanode.sh
-      - ./config/log4j.properties:/opt/hadoop/etc/hadoop/log4j.properties
     depends_on:
       - namenode
     command: [ "/bin/bash", "/init-datanode.sh" ]
@@ -73,56 +66,51 @@ services:
 
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
-    container_name: kafka-ui
     depends_on:
-      - broker
+      - kafka-broker
     ports:
       - "8080:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-broker:9092
 
-  producer:
+  ingestion-producer:
     build:
       context: .
       dockerfile: src/ingestion/Dockerfile
-    container_name: producer
     depends_on:
-      - broker
+      - kafka-broker
     env_file:
       - .env
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: broker:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka-broker:9092
     restart: on-failure
 
-  streaming:
+  streaming-consumer:
     build:
       context: .
       dockerfile: src/streaming/Dockerfile
-    container_name: streaming
     depends_on:
-      - broker
+      - kafka-broker
       - namenode
       - datanode1
       - datanode2
     env_file:
       - .env
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: broker:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka-broker:9092
       OUTPUT_ROOT: /data/air-quality
       HDFS_NAMENODE_URL: http://namenode:9870
       HDFS_USER: root
       LOCAL_STAGING_DIR: /tmp/air-quality
     volumes:
-      - ./src/__init__.py:/app/src/__init__.py:ro
       - ./src/streaming:/app/src/streaming:ro
     restart: on-failure
 
-  jupyter:
+  analytics-notebook:
     build:
       context: .
       dockerfile: src/analytics/Dockerfile
-    container_name: jupyter
     depends_on:
       - namenode
       - datanode1
@@ -136,3 +124,8 @@ services:
     volumes:
       - ./notebooks:/app/notebooks
       - ./src:/app/src
+
+volumes:
+  namenode_data:
+  datanode1_data:
+  datanode2_data:
