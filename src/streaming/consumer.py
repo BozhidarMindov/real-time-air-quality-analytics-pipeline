@@ -25,6 +25,7 @@ DEFAULT_BATCH_SIZE = 100
 DEFAULT_KAFKA_CONNECT_RETRY_ATTEMPTS = 6
 DEFAULT_KAFKA_CONNECT_RETRY_BACKOFF_SECONDS = 5
 
+
 def default_processing_date() -> str:
     """Return the default processing date string.
 
@@ -90,6 +91,7 @@ class Consumer:
         kafka_consumer: The Kafka consumer used to read source messages.
         hdfs_client: The WebHDFS client used to persist raw and curated records.
     """
+
     def __init__(
         self,
         aqicn_api_token: str = "",
@@ -175,7 +177,9 @@ class Consumer:
             timeout_ms=self.poll_timeout_ms,
             max_records=self.batch_size,
         )
-        messages = [record.value for records in polled_records.values() for record in records]
+        messages = [
+            record.value for records in polled_records.values() for record in records
+        ]
         if not messages:
             return {}
 
@@ -183,11 +187,15 @@ class Consumer:
         for day, day_records in grouped_records.items():
             self.write_raw_records(day_records["raw_records"], day)
             self.write_curated_records(day_records["curated_records"], day)
-            self.logger.info(f"Wrote {len(day_records['raw_records'])} messages for {day} to HDFS")
+            self.logger.info(
+                f"Wrote {len(day_records['raw_records'])} messages for {day} to HDFS"
+            )
 
         return grouped_records
 
-    def group_messages_by_day(self, messages: list[bytes | str]) -> dict[str, dict[str, list[dict]]]:
+    def group_messages_by_day(
+        self, messages: list[bytes | str]
+    ) -> dict[str, dict[str, list[dict]]]:
         """Group Kafka messages into raw and curated records by day.
 
         Args:
@@ -201,7 +209,9 @@ class Consumer:
         )
 
         for message in messages:
-            payload_text = message.decode("utf-8") if isinstance(message, bytes) else str(message)
+            payload_text = (
+                message.decode("utf-8") if isinstance(message, bytes) else str(message)
+            )
             try:
                 payload = json.loads(payload_text)
             except json.JSONDecodeError:
@@ -210,7 +220,9 @@ class Consumer:
 
             day = self.extract_day(payload)
             grouped_records[day]["raw_records"].append(payload)
-            grouped_records[day]["curated_records"].append(self.extract_curated_record(payload))
+            grouped_records[day]["curated_records"].append(
+                self.extract_curated_record(payload)
+            )
 
         return dict(grouped_records)
 
@@ -295,7 +307,9 @@ class Consumer:
             return None
 
         path = self.build_raw_output_path(day)
-        content = "".join(json.dumps(record, separators=(",", ":")) + "\n" for record in records)
+        content = "".join(
+            json.dumps(record, separators=(",", ":")) + "\n" for record in records
+        )
         if self.hdfs_client.exists(path):
             self.hdfs_client.append_text(path, content)
         else:
@@ -303,7 +317,9 @@ class Consumer:
 
         return path
 
-    def write_curated_records(self, curated_records: list[dict], day: str) -> str | None:
+    def write_curated_records(
+        self, curated_records: list[dict], day: str
+    ) -> str | None:
         """Write curated records to the daily HDFS JSON Lines file.
 
         Args:
@@ -317,7 +333,10 @@ class Consumer:
             return None
 
         path = self.build_curated_output_path(day)
-        content = "".join(json.dumps(record, separators=(",", ":")) + "\n" for record in curated_records)
+        content = "".join(
+            json.dumps(record, separators=(",", ":")) + "\n"
+            for record in curated_records
+        )
         if self.hdfs_client.exists(path):
             self.hdfs_client.append_text(path, content)
         else:

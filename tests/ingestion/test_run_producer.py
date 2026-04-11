@@ -4,7 +4,9 @@ from pathlib import Path
 
 def _load_run_producer_module():
     module_path = Path(__file__).resolve().parents[2] / "scripts" / "run_producer.py"
-    spec = importlib.util.spec_from_file_location("run_producer_test_module", module_path)
+    spec = importlib.util.spec_from_file_location(
+        "run_producer_test_module", module_path
+    )
     module = importlib.util.module_from_spec(spec)
     assert spec is not None and spec.loader is not None
     spec.loader.exec_module(module)
@@ -25,7 +27,9 @@ def test_main_reads_environment_and_starts_producer(mocker):
         "RETRY_BACKOFF_SECONDS": "9",
     }
     producer_instance = mocker.Mock()
-    producer_class = mocker.patch.object(run_producer, "Producer", return_value=producer_instance)
+    producer_class = mocker.patch.object(
+        run_producer, "Producer", return_value=producer_instance
+    )
     load_dotenv = mocker.patch.object(run_producer, "load_dotenv")
     configure_logging = mocker.patch.object(run_producer, "configure_logging")
     get_env_or_default = mocker.patch.object(
@@ -68,7 +72,9 @@ def test_main_uses_defaults_when_producer_env_is_missing_or_blank(mocker):
         "RETRY_BACKOFF_SECONDS": None,
     }
     producer_instance = mocker.Mock()
-    producer_class = mocker.patch.object(run_producer, "Producer", return_value=producer_instance)
+    producer_class = mocker.patch.object(
+        run_producer, "Producer", return_value=producer_instance
+    )
     mocker.patch.object(run_producer, "load_dotenv")
     mocker.patch.object(run_producer, "configure_logging")
     mocker.patch.object(

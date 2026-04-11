@@ -14,12 +14,16 @@ def _load_module(module_name: str, module_path: Path, mocker):
 
 
 def _load_consumer_module(mocker):
-    module_path = Path(__file__).resolve().parents[2] / "src" / "streaming" / "consumer.py"
+    module_path = (
+        Path(__file__).resolve().parents[2] / "src" / "streaming" / "consumer.py"
+    )
     return _load_module("streaming_consumer_test_module", module_path, mocker)
 
 
 def _load_hdfs_client_module(mocker):
-    module_path = Path(__file__).resolve().parents[2] / "src" / "streaming" / "hdfs_client.py"
+    module_path = (
+        Path(__file__).resolve().parents[2] / "src" / "streaming" / "hdfs_client.py"
+    )
     return _load_module("streaming_hdfs_client_test_module", module_path, mocker)
 
 
@@ -98,8 +102,16 @@ class FakeWebHDFSSession:
 
 def test_consumer_extract_curated_record_keeps_only_required_fields(mocker):
     consumer_module = _load_consumer_module(mocker)
-    mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
-    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=FakeHDFSClient(False))
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_hdfs_client",
+        return_value=FakeHDFSClient(False),
+    )
     consumer = consumer_module.Consumer(aqicn_api_token="")
     payload = {
         "data": {
@@ -145,9 +157,19 @@ def test_consumer_extract_curated_record_keeps_only_required_fields(mocker):
 
 def test_consumer_build_raw_output_path_uses_single_daily_jsonl_file(mocker):
     consumer_module = _load_consumer_module(mocker)
-    mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
-    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=FakeHDFSClient(False))
-    consumer = consumer_module.Consumer(aqicn_api_token="", output_root="/data/air-quality", city="sofia")
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_hdfs_client",
+        return_value=FakeHDFSClient(False),
+    )
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="", output_root="/data/air-quality", city="sofia"
+    )
 
     result = consumer.build_raw_output_path("2026-04-07")
 
@@ -156,9 +178,19 @@ def test_consumer_build_raw_output_path_uses_single_daily_jsonl_file(mocker):
 
 def test_consumer_build_curated_output_path_uses_daily_jsonl_file(mocker):
     consumer_module = _load_consumer_module(mocker)
-    mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
-    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=FakeHDFSClient(False))
-    consumer = consumer_module.Consumer(aqicn_api_token="", output_root="/data/air-quality", city="sofia")
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_hdfs_client",
+        return_value=FakeHDFSClient(False),
+    )
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="", output_root="/data/air-quality", city="sofia"
+    )
 
     result = consumer.build_curated_output_path("2026-04-07")
 
@@ -168,9 +200,17 @@ def test_consumer_build_curated_output_path_uses_daily_jsonl_file(mocker):
 def test_consumer_write_raw_records_appends_when_daily_file_exists(mocker):
     consumer_module = _load_consumer_module(mocker)
     fake_hdfs_client = FakeHDFSClient(exists_result=True)
-    mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
-    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client)
-    consumer = consumer_module.Consumer(aqicn_api_token="", output_root="/data/air-quality", city="sofia")
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
+    )
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="", output_root="/data/air-quality", city="sofia"
+    )
     records = [{"data": {"idx": 1}}, {"data": {"idx": 2}}]
 
     consumer.write_raw_records(records, "2026-04-07")
@@ -188,9 +228,17 @@ def test_consumer_write_raw_records_appends_when_daily_file_exists(mocker):
 def test_consumer_write_curated_records_creates_daily_jsonl_when_missing(mocker):
     consumer_module = _load_consumer_module(mocker)
     fake_hdfs_client = FakeHDFSClient(exists_result=False)
-    mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
-    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client)
-    consumer = consumer_module.Consumer(aqicn_api_token="", output_root="/data/air-quality", city="sofia")
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
+    )
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="", output_root="/data/air-quality", city="sofia"
+    )
     curated_records = [
         {
             "timestamp": "2026-04-07T10:00:00+03:00",
@@ -226,9 +274,17 @@ def test_consumer_write_curated_records_creates_daily_jsonl_when_missing(mocker)
 def test_consumer_write_curated_records_appends_to_daily_jsonl_when_present(mocker):
     consumer_module = _load_consumer_module(mocker)
     fake_hdfs_client = FakeHDFSClient(exists_result=True)
-    mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
-    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client)
-    consumer = consumer_module.Consumer(aqicn_api_token="", output_root="/data/air-quality", city="sofia")
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
+    )
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="", output_root="/data/air-quality", city="sofia"
+    )
     curated_records = [
         {
             "timestamp": "2026-04-07T10:00:00+03:00",
@@ -267,7 +323,14 @@ def test_consumer_consume_once_groups_messages_and_writes_outputs(tmp_path, mock
         {
             "partition-0": [
                 FakeKafkaRecord(
-                    json.dumps({"data": {"time": {"iso": "2026-04-07T10:00:00+03:00"}, "idx": 1}}).encode("utf-8")
+                    json.dumps(
+                        {
+                            "data": {
+                                "time": {"iso": "2026-04-07T10:00:00+03:00"},
+                                "idx": 1,
+                            }
+                        }
+                    ).encode("utf-8")
                 ),
                 FakeKafkaRecord(json.dumps({"data": {"idx": 2}}).encode("utf-8")),
             ]
@@ -276,8 +339,14 @@ def test_consumer_consume_once_groups_messages_and_writes_outputs(tmp_path, mock
     fake_kafka_consumer = FakeKafkaConsumer(polled_records=polled_records)
     fake_hdfs_client = FakeHDFSClient(exists_result=False)
     logger = mocker.Mock()
-    mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=fake_kafka_consumer)
-    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client)
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=fake_kafka_consumer,
+    )
+    mocker.patch.object(
+        consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
+    )
     consumer = consumer_module.Consumer(
         aqicn_api_token="",
         output_root="/data/air-quality",
@@ -291,7 +360,9 @@ def test_consumer_consume_once_groups_messages_and_writes_outputs(tmp_path, mock
 
     assert result == {
         "2026-04-07": {
-            "raw_records": [{"data": {"time": {"iso": "2026-04-07T10:00:00+03:00"}, "idx": 1}}],
+            "raw_records": [
+                {"data": {"time": {"iso": "2026-04-07T10:00:00+03:00"}, "idx": 1}}
+            ],
             "curated_records": [
                 {
                     "timestamp": "2026-04-07T10:00:00+03:00",
@@ -342,9 +413,19 @@ def test_consumer_consume_once_groups_messages_and_writes_outputs(tmp_path, mock
 def test_consumer_group_messages_by_day_skips_invalid_json(mocker):
     consumer_module = _load_consumer_module(mocker)
     logger = mocker.Mock()
-    mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
-    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=FakeHDFSClient(False))
-    consumer = consumer_module.Consumer(aqicn_api_token="", processing_date="2026-04-07", logger=logger)
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_hdfs_client",
+        return_value=FakeHDFSClient(False),
+    )
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="", processing_date="2026-04-07", logger=logger
+    )
 
     grouped = consumer.group_messages_by_day([b"not-json", b'{"data":{"idx":7}}'])
 
@@ -377,8 +458,16 @@ def test_consumer_group_messages_by_day_skips_invalid_json(mocker):
 
 def test_consumer_run_processes_the_requested_number_of_iterations(mocker):
     consumer_module = _load_consumer_module(mocker)
-    mocker.patch.object(consumer_module.Consumer, "_create_kafka_consumer", return_value=FakeKafkaConsumer([]))
-    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=FakeHDFSClient(False))
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_hdfs_client",
+        return_value=FakeHDFSClient(False),
+    )
     consumer = consumer_module.Consumer(aqicn_api_token="")
     consume_once = mocker.patch.object(consumer, "consume_once")
 
@@ -387,14 +476,22 @@ def test_consumer_run_processes_the_requested_number_of_iterations(mocker):
     assert consume_once.call_count == 3
 
 
-def test_consumer_retries_kafka_connection_when_broker_is_temporarily_unavailable(mocker):
+def test_consumer_retries_kafka_connection_when_broker_is_temporarily_unavailable(
+    mocker,
+):
     consumer_module = _load_consumer_module(mocker)
     fake_hdfs_client = FakeHDFSClient(False)
     kafka_consumer = FakeKafkaConsumer([])
     sleep = mocker.Mock()
 
-    mocker.patch.object(consumer_module, "KafkaConsumer", side_effect=[NoBrokersAvailable(), kafka_consumer])
-    mocker.patch.object(consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client)
+    mocker.patch.object(
+        consumer_module,
+        "KafkaConsumer",
+        side_effect=[NoBrokersAvailable(), kafka_consumer],
+    )
+    mocker.patch.object(
+        consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
+    )
 
     consumer = consumer_module.Consumer(
         aqicn_api_token="",
@@ -438,7 +535,10 @@ def test_hdfs_client_create_text_follows_namenode_redirect_to_datanode(mocker):
     hdfs_client_module = _load_hdfs_client_module(mocker)
     session = FakeWebHDFSSession()
     session.put_responses = [
-        FakeResponse(status_code=307, headers={"Location": "http://datanode:9864/webhdfs/v1/data/file"}),
+        FakeResponse(
+            status_code=307,
+            headers={"Location": "http://datanode:9864/webhdfs/v1/data/file"},
+        ),
         FakeResponse(status_code=201),
     ]
     client = hdfs_client_module.HDFSClient(
@@ -474,7 +574,10 @@ def test_hdfs_client_append_text_follows_namenode_redirect_to_datanode(mocker):
     hdfs_client_module = _load_hdfs_client_module(mocker)
     session = FakeWebHDFSSession()
     session.post_responses = [
-        FakeResponse(status_code=307, headers={"Location": "http://datanode:9864/webhdfs/v1/data/file"}),
+        FakeResponse(
+            status_code=307,
+            headers={"Location": "http://datanode:9864/webhdfs/v1/data/file"},
+        ),
         FakeResponse(status_code=200),
     ]
     client = hdfs_client_module.HDFSClient(

@@ -6,7 +6,9 @@ from src.analytics import batch_analysis
 
 def _load_run_analytics_module():
     module_path = Path(__file__).resolve().parents[2] / "scripts" / "run_analytics.py"
-    spec = importlib.util.spec_from_file_location("run_analytics_test_module", module_path)
+    spec = importlib.util.spec_from_file_location(
+        "run_analytics_test_module", module_path
+    )
     module = importlib.util.module_from_spec(spec)
     assert spec is not None and spec.loader is not None
     spec.loader.exec_module(module)
@@ -85,7 +87,9 @@ def test_main_reads_environment_and_calls_run_batch_analysis(mocker):
     spark_session = mocker.Mock()
     configure_logging = mocker.patch.object(run_analytics, "configure_logging")
     mocker.patch.object(run_analytics.logging, "getLogger", return_value=logger)
-    mocker.patch.object(run_analytics, "create_spark_session", return_value=spark_session)
+    mocker.patch.object(
+        run_analytics, "create_spark_session", return_value=spark_session
+    )
     run_batch_analysis = mocker.patch.object(
         run_analytics,
         "run_batch_analysis",

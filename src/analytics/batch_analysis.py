@@ -9,7 +9,11 @@ from pyspark.sql.types import StringType
 from pyspark.sql.types import StructField
 from pyspark.sql.types import StructType
 
-from src.analytics.metrics import compute_average_pollutants, compute_daily_aqi, compute_aqi_category_distribution
+from src.analytics.metrics import (
+    compute_average_pollutants,
+    compute_daily_aqi,
+    compute_aqi_category_distribution,
+)
 from src.analytics.metrics import compute_average_aqi_by_hour_of_day
 from src.analytics.metrics import compute_dominant_pollutant_counts
 from src.analytics.metrics import compute_weather_correlations
@@ -65,7 +69,9 @@ def create_spark_session(app_name: str = "air-quality-analytics") -> SparkSessio
     return SparkSession.builder.appName(app_name).getOrCreate()
 
 
-def load_curated_dataframe(spark: SparkSession, output_root: str, city: str) -> DataFrame:
+def load_curated_dataframe(
+    spark: SparkSession, output_root: str, city: str
+) -> DataFrame:
     """Load curated AQICN JSONL records from HDFS.
 
     Args:
@@ -89,14 +95,15 @@ def normalize_curated_dataframe(dataframe: DataFrame) -> DataFrame:
     Returns:
         A Spark dataframe with parsed timestamp, hour, and day columns.
     """
-    parsed = dataframe.withColumn("event_timestamp", F.expr("try_to_timestamp(timestamp)"))
+    parsed = dataframe.withColumn(
+        "event_timestamp", F.expr("try_to_timestamp(timestamp)")
+    )
     filtered = parsed.where(
         F.col("event_timestamp").isNotNull() & F.col("aqi").isNotNull()
     )
-    return (
-        filtered.withColumn("day", F.date_format(F.col("event_timestamp"), "yyyy-MM-dd"))
-        .withColumn("hour", F.hour(F.col("event_timestamp")))
-    )
+    return filtered.withColumn(
+        "day", F.date_format(F.col("event_timestamp"), "yyyy-MM-dd")
+    ).withColumn("hour", F.hour(F.col("event_timestamp")))
 
 
 def to_pandas_table(dataframe: DataFrame):
@@ -129,7 +136,9 @@ def run_batch_analysis(
     logger = logging.getLogger("air_quality.analytics")
     curated = load_curated_dataframe(spark, output_root, city)
     normalized = normalize_curated_dataframe(curated)
-    logger.info(f"Loaded curated analytics data for {city} from {build_curated_input_path(output_root, city)}")
+    logger.info(
+        f"Loaded curated analytics data for {city} from {build_curated_input_path(output_root, city)}"
+    )
     return {
         "normalized": normalized,
         "hourly_aqi": compute_average_aqi_by_hour_of_day(normalized),

@@ -43,18 +43,31 @@ def test_publish_once_sends_raw_json_to_kafka_topic(mocker):
     fake_kafka_producer = FakeKafkaProducer()
 
     mocker.patch.object(producer_module, "AQICNClient", return_value=fake_client)
-    mocker.patch.object(producer_module.Producer, "_create_kafka_producer", return_value=fake_kafka_producer)
+    mocker.patch.object(
+        producer_module.Producer,
+        "_create_kafka_producer",
+        return_value=fake_kafka_producer,
+    )
 
-    producer = Producer(aqicn_api_token="token", city="sofia", kafka_topic="air_quality_sofia")
+    producer = Producer(
+        aqicn_api_token="token", city="sofia", kafka_topic="air_quality_sofia"
+    )
     producer.logger = fake_logger
 
     producer.publish_once()
 
     assert producer.kafka_producer.sent_messages[0]["topic"] == "air_quality_sofia"
-    assert json.loads(producer.kafka_producer.sent_messages[0]["value"].decode("utf-8")) == payload
+    assert (
+        json.loads(producer.kafka_producer.sent_messages[0]["value"].decode("utf-8"))
+        == payload
+    )
     assert producer.kafka_producer.flush_count == 1
-    assert producer.logger.messages == ["Published air quality payload for sofia to air_quality_sofia"]
-    assert producer.logger.calls == [("Published air quality payload for sofia to air_quality_sofia", ())]
+    assert producer.logger.messages == [
+        "Published air quality payload for sofia to air_quality_sofia"
+    ]
+    assert producer.logger.calls == [
+        ("Published air quality payload for sofia to air_quality_sofia", ())
+    ]
 
 
 def test_run_sleeps_between_iterations(mocker):
@@ -62,9 +75,15 @@ def test_run_sleeps_between_iterations(mocker):
     fake_client = FakeAQICNClient([{"status": "ok"}, {"status": "ok"}])
 
     mocker.patch.object(producer_module, "AQICNClient", return_value=fake_client)
-    mocker.patch.object(producer_module.Producer, "_create_kafka_producer", return_value=FakeKafkaProducer())
+    mocker.patch.object(
+        producer_module.Producer,
+        "_create_kafka_producer",
+        return_value=FakeKafkaProducer(),
+    )
 
-    producer = Producer(aqicn_api_token="token", city="sofia", poll_interval_seconds=120)
+    producer = Producer(
+        aqicn_api_token="token", city="sofia", poll_interval_seconds=120
+    )
     producer.logger = FakeLogger()
     producer.sleep = sleep_calls.append
 

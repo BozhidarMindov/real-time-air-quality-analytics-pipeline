@@ -11,6 +11,7 @@ from src.streaming.consumer import DEFAULT_OUTPUT_ROOT
 from src.streaming.hdfs_client import DEFAULT_HDFS_NAMENODE_URL
 from src.streaming.hdfs_client import DEFAULT_HDFS_USER
 
+
 def main() -> int:
     """Run the streaming consumer entrypoint.
 
@@ -55,6 +56,7 @@ def main() -> int:
     except KeyboardInterrupt:
         logging.getLogger("air_quality.streaming").info("Streaming consumer stopped")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -25,7 +25,9 @@ def test_normalize_curated_dataframe_adds_hour_and_day_columns(spark_session):
     assert result["day"] == "2026-04-07"
 
 
-def test_normalize_curated_dataframe_filters_rows_with_invalid_timestamp_or_missing_aqi(spark_session):
+def test_normalize_curated_dataframe_filters_rows_with_invalid_timestamp_or_missing_aqi(
+    spark_session,
+):
     source = spark_session.createDataFrame(
         [
             {
@@ -43,7 +45,10 @@ def test_normalize_curated_dataframe_filters_rows_with_invalid_timestamp_or_miss
         ]
     )
 
-    rows = [row.asDict() for row in batch_analysis.normalize_curated_dataframe(source).collect()]
+    rows = [
+        row.asDict()
+        for row in batch_analysis.normalize_curated_dataframe(source).collect()
+    ]
 
     assert len(rows) == 1
     assert rows[0]["aqi"] == 72

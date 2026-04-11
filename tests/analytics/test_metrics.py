@@ -10,7 +10,10 @@ def test_compute_average_aqi_by_hour_of_day_returns_average_by_hour(spark_sessio
         ]
     )
 
-    rows = [row.asDict() for row in metrics.compute_average_aqi_by_hour_of_day(source).collect()]
+    rows = [
+        row.asDict()
+        for row in metrics.compute_average_aqi_by_hour_of_day(source).collect()
+    ]
 
     assert rows == [
         {"hour": 10, "avg_aqi": 70.0},
@@ -27,7 +30,10 @@ def test_compute_average_aqi_by_hour_of_day_ignores_null_hour_buckets(spark_sess
         ]
     )
 
-    rows = [row.asDict() for row in metrics.compute_average_aqi_by_hour_of_day(source).collect()]
+    rows = [
+        row.asDict()
+        for row in metrics.compute_average_aqi_by_hour_of_day(source).collect()
+    ]
 
     assert rows == [{"hour": 10, "avg_aqi": 70.0}]
 
@@ -76,7 +82,10 @@ def test_compute_aqi_category_distribution_groups_by_aqi_band(spark_session):
         ]
     )
 
-    rows = [row.asDict() for row in metrics.compute_aqi_category_distribution(source).collect()]
+    rows = [
+        row.asDict()
+        for row in metrics.compute_aqi_category_distribution(source).collect()
+    ]
 
     assert rows == [
         {"aqi_category": "Moderate", "count": 2},
@@ -115,7 +124,10 @@ def test_compute_dominant_pollutant_counts_orders_by_frequency(spark_session):
         ]
     )
 
-    rows = [row.asDict() for row in metrics.compute_dominant_pollutant_counts(source).collect()]
+    rows = [
+        row.asDict()
+        for row in metrics.compute_dominant_pollutant_counts(source).collect()
+    ]
 
     assert rows == [
         {"dominant_pollutant": "pm10", "count": 2},
@@ -123,7 +135,9 @@ def test_compute_dominant_pollutant_counts_orders_by_frequency(spark_session):
     ]
 
 
-def test_compute_weather_correlations_returns_null_for_constant_weather_series(spark_session):
+def test_compute_weather_correlations_returns_null_for_constant_weather_series(
+    spark_session,
+):
     source = spark_session.createDataFrame(
         [
             {"aqi": 10.0, "temperature": 20.0, "humidity": 30.0, "wind": 1.0},

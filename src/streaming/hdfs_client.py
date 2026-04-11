@@ -39,6 +39,7 @@ class HDFSClient:
         session: The request helper used for WebHDFS calls.
         timeout_seconds: The timeout applied to each HTTP request.
     """
+
     def __init__(
         self,
         namenode_url: str = DEFAULT_HDFS_NAMENODE_URL,

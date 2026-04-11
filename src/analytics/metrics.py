@@ -64,15 +64,14 @@ def compute_aqi_category_distribution(dataframe: DataFrame) -> DataFrame:
         A Spark dataframe with AQI category counts ordered by frequency.
     """
     return (
-        dataframe
-        .withColumn(
+        dataframe.withColumn(
             "aqi_category",
             F.when(F.col("aqi") <= 50, "Good")
             .when(F.col("aqi") <= 100, "Moderate")
             .when(F.col("aqi") <= 150, "Unhealthy for Sensitive Groups")
             .when(F.col("aqi") <= 200, "Unhealthy")
             .when(F.col("aqi") <= 300, "Very Unhealthy")
-            .otherwise("Hazardous")
+            .otherwise("Hazardous"),
         )
         .groupBy("aqi_category")
         .count()

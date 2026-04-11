@@ -4,11 +4,14 @@ from pathlib import Path
 
 def _load_run_streaming_module():
     module_path = Path(__file__).resolve().parents[2] / "scripts" / "run_streaming.py"
-    spec = importlib.util.spec_from_file_location("run_streaming_test_module", module_path)
+    spec = importlib.util.spec_from_file_location(
+        "run_streaming_test_module", module_path
+    )
     module = importlib.util.module_from_spec(spec)
     assert spec is not None and spec.loader is not None
     spec.loader.exec_module(module)
     return module
+
 
 def test_main_reads_environment_and_forwards_values(mocker):
     run_streaming = _load_run_streaming_module()
@@ -23,7 +26,9 @@ def test_main_reads_environment_and_forwards_values(mocker):
         "LOCAL_STAGING_DIR": "/tmp/air-quality",
     }
     consumer_instance = mocker.Mock()
-    consumer_class = mocker.patch.object(run_streaming, "Consumer", return_value=consumer_instance)
+    consumer_class = mocker.patch.object(
+        run_streaming, "Consumer", return_value=consumer_instance
+    )
     configure_logging = mocker.patch.object(run_streaming, "configure_logging")
     get_env_or_default = mocker.patch.object(
         run_streaming,
@@ -63,7 +68,9 @@ def test_main_uses_streaming_defaults_when_env_is_missing_or_blank(mocker):
         "LOCAL_STAGING_DIR": "",
     }
     consumer_instance = mocker.Mock()
-    consumer_class = mocker.patch.object(run_streaming, "Consumer", return_value=consumer_instance)
+    consumer_class = mocker.patch.object(
+        run_streaming, "Consumer", return_value=consumer_instance
+    )
     mocker.patch.object(run_streaming, "configure_logging")
     mocker.patch.object(
         run_streaming,

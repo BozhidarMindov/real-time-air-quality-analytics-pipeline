@@ -14,6 +14,7 @@ class AQICNClient:
         session: The request helper used for AQICN calls.
         sleep: The sleep function used between retry attempts.
     """
+
     def __init__(
         self,
         api_token: str,
@@ -67,11 +68,15 @@ class AQICNClient:
 
         for attempt in range(1, self.retry_attempts + 1):
             try:
-                response = self.session.get(url, params=params, timeout=self.request_timeout_seconds)
+                response = self.session.get(
+                    url, params=params, timeout=self.request_timeout_seconds
+                )
                 response.raise_for_status()
                 payload = response.json()
                 if payload.get("status") != "ok":
-                    raise RuntimeError(f"AQICN API returned status {payload.get('status')}")
+                    raise RuntimeError(
+                        f"AQICN API returned status {payload.get('status')}"
+                    )
                 return payload
             except Exception:
                 if attempt >= self.retry_attempts:

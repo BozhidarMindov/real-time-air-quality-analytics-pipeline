@@ -20,6 +20,7 @@ class Producer:
         logger: The application logger for ingestion events.
         sleep: The sleep function used between polling iterations.
     """
+
     def __init__(
         self,
         aqicn_api_token: str,
@@ -70,7 +71,9 @@ class Producer:
         message = json.dumps(payload).encode("utf-8")
         self.kafka_producer.send(self.kafka_topic, value=message)
         self.kafka_producer.flush()
-        self.logger.info(f"Published air quality payload for {self.city} to {self.kafka_topic}")
+        self.logger.info(
+            f"Published air quality payload for {self.city} to {self.kafka_topic}"
+        )
         return payload
 
     def run(self, iterations: int | None = None) -> None:
