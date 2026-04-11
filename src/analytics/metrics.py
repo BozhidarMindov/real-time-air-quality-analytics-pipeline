@@ -20,8 +20,8 @@ def _safe_corr(left_column: str, right_column: str):
     )
 
 
-def compute_hourly_aqi(dataframe: DataFrame) -> DataFrame:
-    """Compute the average AQI for each hour bucket.
+def compute_average_aqi_by_hour_of_day(dataframe: DataFrame) -> DataFrame:
+    """Compute the average AQI for each hour of day bucket.
 
     Args:
         dataframe: The normalized curated records.

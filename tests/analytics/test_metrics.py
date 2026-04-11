@@ -1,7 +1,7 @@
 from src.analytics import metrics
 
 
-def test_compute_hourly_aqi_returns_average_by_hour(spark_session):
+def test_compute_average_aqi_by_hour_of_day_returns_average_by_hour(spark_session):
     source = spark_session.createDataFrame(
         [
             {"hour": 10, "aqi": 60},
@@ -10,7 +10,7 @@ def test_compute_hourly_aqi_returns_average_by_hour(spark_session):
         ]
     )
 
-    rows = [row.asDict() for row in metrics.compute_hourly_aqi(source).collect()]
+    rows = [row.asDict() for row in metrics.compute_average_aqi_by_hour_of_day(source).collect()]
 
     assert rows == [
         {"hour": 10, "avg_aqi": 70.0},
@@ -18,7 +18,7 @@ def test_compute_hourly_aqi_returns_average_by_hour(spark_session):
     ]
 
 
-def test_compute_hourly_aqi_ignores_null_hour_buckets(spark_session):
+def test_compute_average_aqi_by_hour_of_day_ignores_null_hour_buckets(spark_session):
     source = spark_session.createDataFrame(
         [
             {"hour": None, "aqi": 999},
@@ -27,7 +27,7 @@ def test_compute_hourly_aqi_ignores_null_hour_buckets(spark_session):
         ]
     )
 
-    rows = [row.asDict() for row in metrics.compute_hourly_aqi(source).collect()]
+    rows = [row.asDict() for row in metrics.compute_average_aqi_by_hour_of_day(source).collect()]
 
     assert rows == [{"hour": 10, "avg_aqi": 70.0}]
 

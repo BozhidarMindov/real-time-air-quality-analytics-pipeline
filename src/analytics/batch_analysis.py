@@ -10,8 +10,8 @@ from pyspark.sql.types import StructField
 from pyspark.sql.types import StructType
 
 from src.analytics.metrics import compute_average_pollutants
+from src.analytics.metrics import compute_average_aqi_by_hour_of_day
 from src.analytics.metrics import compute_dominant_pollutant_counts
-from src.analytics.metrics import compute_hourly_aqi
 from src.analytics.metrics import compute_weather_correlations
 
 
@@ -90,8 +90,11 @@ def normalize_curated_dataframe(dataframe: DataFrame) -> DataFrame:
         A Spark dataframe with parsed timestamp, hour, and day columns.
     """
     parsed = dataframe.withColumn("event_timestamp", F.expr("try_to_timestamp(timestamp)"))
+    filtered = parsed.where(
+        F.col("event_timestamp").isNotNull() & F.col("aqi").isNotNull()
+    )
     return (
-        parsed.withColumn("day", F.date_format(F.col("event_timestamp"), "yyyy-MM-dd"))
+        filtered.withColumn("day", F.date_format(F.col("event_timestamp"), "yyyy-MM-dd"))
         .withColumn("hour", F.hour(F.col("event_timestamp")))
     )
 
@@ -129,7 +132,7 @@ def run_batch_analysis(
     logger.info(f"Loaded curated analytics data for {city} from {build_curated_input_path(output_root, city)}")
     return {
         "normalized": normalized,
-        "hourly_aqi": compute_hourly_aqi(normalized),
+        "hourly_aqi": compute_average_aqi_by_hour_of_day(normalized),
         "average_pollutants": compute_average_pollutants(normalized),
         "dominant_pollutants": compute_dominant_pollutant_counts(normalized),
         "weather_correlations": compute_weather_correlations(normalized),
