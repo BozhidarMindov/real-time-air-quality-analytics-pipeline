@@ -9,7 +9,7 @@ from pyspark.sql.types import StringType
 from pyspark.sql.types import StructField
 from pyspark.sql.types import StructType
 
-from src.analytics.metrics import compute_average_pollutants
+from src.analytics.metrics import compute_average_pollutants, compute_daily_aqi, compute_aqi_category_distribution
 from src.analytics.metrics import compute_average_aqi_by_hour_of_day
 from src.analytics.metrics import compute_dominant_pollutant_counts
 from src.analytics.metrics import compute_weather_correlations
@@ -133,6 +133,8 @@ def run_batch_analysis(
     return {
         "normalized": normalized,
         "hourly_aqi": compute_average_aqi_by_hour_of_day(normalized),
+        "daily_aqi": compute_daily_aqi(normalized),
+        "aqi_category_distribution": compute_aqi_category_distribution(normalized),
         "average_pollutants": compute_average_pollutants(normalized),
         "dominant_pollutants": compute_dominant_pollutant_counts(normalized),
         "weather_correlations": compute_weather_correlations(normalized),

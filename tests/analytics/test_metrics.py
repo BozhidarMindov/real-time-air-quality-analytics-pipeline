@@ -32,6 +32,62 @@ def test_compute_average_aqi_by_hour_of_day_ignores_null_hour_buckets(spark_sess
     assert rows == [{"hour": 10, "avg_aqi": 70.0}]
 
 
+def test_compute_daily_aqi_returns_average_by_day(spark_session):
+    source = spark_session.createDataFrame(
+        [
+            {"day": "2026-04-07", "aqi": 60},
+            {"day": "2026-04-07", "aqi": 90},
+            {"day": "2026-04-08", "aqi": 30},
+        ]
+    )
+
+    rows = [row.asDict() for row in metrics.compute_daily_aqi(source).collect()]
+
+    assert rows == [
+        {"day": "2026-04-07", "avg_aqi": 75.0},
+        {"day": "2026-04-08", "avg_aqi": 30.0},
+    ]
+
+
+def test_compute_daily_aqi_ignores_null_day_buckets(spark_session):
+    source = spark_session.createDataFrame(
+        [
+            {"day": None, "aqi": 999},
+            {"day": "2026-04-07", "aqi": 60},
+            {"day": "2026-04-07", "aqi": 80},
+        ]
+    )
+
+    rows = [row.asDict() for row in metrics.compute_daily_aqi(source).collect()]
+
+    assert rows == [{"day": "2026-04-07", "avg_aqi": 70.0}]
+
+
+def test_compute_aqi_category_distribution_groups_by_aqi_band(spark_session):
+    source = spark_session.createDataFrame(
+        [
+            {"aqi": 40},
+            {"aqi": 75},
+            {"aqi": 125},
+            {"aqi": 175},
+            {"aqi": 250},
+            {"aqi": 350},
+            {"aqi": 55},
+        ]
+    )
+
+    rows = [row.asDict() for row in metrics.compute_aqi_category_distribution(source).collect()]
+
+    assert rows == [
+        {"aqi_category": "Moderate", "count": 2},
+        {"aqi_category": "Good", "count": 1},
+        {"aqi_category": "Hazardous", "count": 1},
+        {"aqi_category": "Unhealthy", "count": 1},
+        {"aqi_category": "Unhealthy for Sensitive Groups", "count": 1},
+        {"aqi_category": "Very Unhealthy", "count": 1},
+    ]
+
+
 def test_compute_average_pollutants_returns_pm10_no2_o3(spark_session):
     source = spark_session.createDataFrame(
         [

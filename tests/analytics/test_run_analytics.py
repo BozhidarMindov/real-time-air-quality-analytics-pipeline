@@ -63,6 +63,8 @@ def test_run_batch_analysis_returns_expected_summary_keys(spark_session, mocker)
     assert set(result) == {
         "normalized",
         "hourly_aqi",
+        "daily_aqi",
+        "aqi_category_distribution",
         "average_pollutants",
         "dominant_pollutants",
         "weather_correlations",
@@ -90,6 +92,8 @@ def test_main_reads_environment_and_calls_run_batch_analysis(mocker):
         return_value={
             "normalized": mocker.Mock(count=mocker.Mock(return_value=2)),
             "hourly_aqi": mocker.Mock(),
+            "daily_aqi": mocker.Mock(),
+            "aqi_category_distribution": mocker.Mock(),
             "average_pollutants": mocker.Mock(),
             "dominant_pollutants": mocker.Mock(),
             "weather_correlations": mocker.Mock(),

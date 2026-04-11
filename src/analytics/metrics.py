@@ -37,6 +37,49 @@ def compute_average_aqi_by_hour_of_day(dataframe: DataFrame) -> DataFrame:
     )
 
 
+def compute_daily_aqi(dataframe: DataFrame) -> DataFrame:
+    """Compute the average AQI for each day bucket.
+
+    Args:
+        dataframe: The normalized curated records.
+
+    Returns:
+        A Spark dataframe with daily AQI values ordered by day.
+    """
+    return (
+        dataframe.where(F.col("day").isNotNull())
+        .groupBy("day")
+        .agg(F.avg("aqi").alias("avg_aqi"))
+        .orderBy("day")
+    )
+
+
+def compute_aqi_category_distribution(dataframe: DataFrame) -> DataFrame:
+    """Count AQI records by EPA-style AQI category.
+
+    Args:
+        dataframe: The normalized curated records.
+
+    Returns:
+        A Spark dataframe with AQI category counts ordered by frequency.
+    """
+    return (
+        dataframe
+        .withColumn(
+            "aqi_category",
+            F.when(F.col("aqi") <= 50, "Good")
+            .when(F.col("aqi") <= 100, "Moderate")
+            .when(F.col("aqi") <= 150, "Unhealthy for Sensitive Groups")
+            .when(F.col("aqi") <= 200, "Unhealthy")
+            .when(F.col("aqi") <= 300, "Very Unhealthy")
+            .otherwise("Hazardous")
+        )
+        .groupBy("aqi_category")
+        .count()
+        .orderBy(F.desc("count"), F.asc("aqi_category"))
+    )
+
+
 def compute_average_pollutants(dataframe: DataFrame) -> DataFrame:
     """Compute the average pollutant values used in the report.
 
