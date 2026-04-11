@@ -191,6 +191,7 @@ class Consumer:
                 f"Wrote {len(day_records['raw_records'])} messages for {day} to HDFS"
             )
 
+        self.kafka_consumer.commit()
         return grouped_records
 
     def group_messages_by_day(
@@ -393,7 +394,7 @@ class Consumer:
                     bootstrap_servers=bootstrap_servers,
                     group_id=self.consumer_group,
                     auto_offset_reset="latest",
-                    enable_auto_commit=True,
+                    enable_auto_commit=False,
                     value_deserializer=lambda value: value,
                 )
             except NoBrokersAvailable as exc:

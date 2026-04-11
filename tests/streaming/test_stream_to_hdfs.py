@@ -59,12 +59,16 @@ class FakeKafkaConsumer:
         self.polled_records = list(polled_records)
         self.poll_calls = []
         self.closed = False
+        self.commit_count = 0
 
     def poll(self, timeout_ms, max_records):
         self.poll_calls.append((timeout_ms, max_records))
         if self.polled_records:
             return self.polled_records.pop(0)
         return {}
+
+    def commit(self):
+        self.commit_count += 1
 
     def close(self):
         self.closed = True
@@ -410,6 +414,62 @@ def test_consumer_consume_once_groups_messages_and_writes_outputs(tmp_path, mock
     logger.info.assert_any_call("Wrote 1 messages for 2026-04-06 to HDFS")
 
 
+def test_consumer_commits_offsets_only_after_successful_hdfs_writes(mocker):
+    consumer_module = _load_consumer_module(mocker)
+    polled_records = [
+        {
+            "partition-0": [
+                FakeKafkaRecord(
+                    json.dumps(
+                        {
+                            "data": {
+                                "time": {"iso": "2026-04-07T10:00:00+03:00"},
+                                "idx": 1,
+                            }
+                        }
+                    ).encode("utf-8")
+                )
+            ]
+        }
+    ]
+    fake_kafka_consumer = FakeKafkaConsumer(polled_records=polled_records)
+    fake_hdfs_client = FakeHDFSClient(exists_result=False)
+
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=fake_kafka_consumer,
+    )
+    mocker.patch.object(
+        consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
+    )
+
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="",
+        output_root="/data/air-quality",
+        city="sofia",
+        processing_date="2026-04-06",
+    )
+
+    consumer.consume_once()
+
+    assert fake_hdfs_client.calls == [
+        ("exists", "/data/air-quality/sofia/raw/2026-04-07.jsonl"),
+        (
+            "create_text",
+            "/data/air-quality/sofia/raw/2026-04-07.jsonl",
+            '{"data":{"time":{"iso":"2026-04-07T10:00:00+03:00"},"idx":1}}\n',
+        ),
+        ("exists", "/data/air-quality/sofia/curated/2026-04-07.jsonl"),
+        (
+            "create_text",
+            "/data/air-quality/sofia/curated/2026-04-07.jsonl",
+            '{"timestamp":"2026-04-07T10:00:00+03:00","station_id":1,"station_name":null,"latitude":null,"longitude":null,"aqi":null,"dominant_pollutant":null,"pm10":null,"no2":null,"o3":null,"temperature":null,"humidity":null,"wind":null,"pressure":null,"dew":null}\n',
+        ),
+    ]
+    assert fake_kafka_consumer.commit_count == 1
+
+
 def test_consumer_group_messages_by_day_skips_invalid_json(mocker):
     consumer_module = _load_consumer_module(mocker)
     logger = mocker.Mock()
@@ -502,6 +562,7 @@ def test_consumer_retries_kafka_connection_when_broker_is_temporarily_unavailabl
 
     assert consumer.kafka_consumer is kafka_consumer
     assert consumer_module.KafkaConsumer.call_count == 2
+    assert consumer_module.KafkaConsumer.call_args.kwargs["enable_auto_commit"] is False
     sleep.assert_called_once_with(7)
 
 
