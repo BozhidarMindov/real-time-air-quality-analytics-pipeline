@@ -1,13 +1,10 @@
 import logging
 
-from src.analytics.batch_analysis import DEFAULT_AQI_JUMP_THRESHOLD
-from src.analytics.batch_analysis import DEFAULT_AQI_SPIKE_THRESHOLD
 from src.analytics.batch_analysis import DEFAULT_CITY
 from src.analytics.batch_analysis import DEFAULT_HDFS_ROOT
 from src.analytics.batch_analysis import create_spark_session
 from src.analytics.batch_analysis import run_batch_analysis
 from src.common.env import get_env_or_default
-from src.common.env import get_int_env_or_default
 from src.common.logging import configure_logging
 
 
@@ -22,14 +19,10 @@ def main() -> int:
     try:
         city = get_env_or_default("CITY", DEFAULT_CITY)
         output_root = get_env_or_default("OUTPUT_ROOT", DEFAULT_HDFS_ROOT)
-        aqi_threshold = get_int_env_or_default("AQI_SPIKE_THRESHOLD", DEFAULT_AQI_SPIKE_THRESHOLD)
-        jump_threshold = get_int_env_or_default("AQI_JUMP_THRESHOLD", DEFAULT_AQI_JUMP_THRESHOLD)
         results = run_batch_analysis(
             spark,
             output_root=output_root,
             city=city,
-            aqi_threshold=aqi_threshold,
-            jump_threshold=jump_threshold,
         )
         logger = logging.getLogger("air_quality.analytics")
         logger.info(f"Computed analytics tables: {', '.join(results)}")

@@ -58,8 +58,6 @@ def test_run_batch_analysis_returns_expected_summary_keys(spark_session, mocker)
         spark_session,
         "/data/air-quality",
         "sofia",
-        aqi_threshold=90,
-        jump_threshold=30,
     )
 
     assert set(result) == {
@@ -68,7 +66,6 @@ def test_run_batch_analysis_returns_expected_summary_keys(spark_session, mocker)
         "average_pollutants",
         "dominant_pollutants",
         "weather_correlations",
-        "aqi_spikes",
     }
 
 
@@ -96,37 +93,25 @@ def test_main_reads_environment_and_calls_run_batch_analysis(mocker):
             "average_pollutants": mocker.Mock(),
             "dominant_pollutants": mocker.Mock(),
             "weather_correlations": mocker.Mock(),
-            "aqi_spikes": mocker.Mock(count=mocker.Mock(return_value=1)),
         },
     )
     env_values = {
         "CITY": "sofia",
         "OUTPUT_ROOT": "/data/air-quality",
-        "AQI_SPIKE_THRESHOLD": "90",
-        "AQI_JUMP_THRESHOLD": "30",
     }
     get_env_or_default = mocker.patch.object(
         run_analytics,
         "get_env_or_default",
         side_effect=lambda key, default: env_values.get(key) or default,
     )
-    get_int_env_or_default = mocker.patch.object(
-        run_analytics,
-        "get_int_env_or_default",
-        side_effect=lambda key, default: int(env_values.get(key) or default),
-    )
-
     result = run_analytics.main()
 
     assert result == 0
     configure_logging.assert_called_once_with()
     assert get_env_or_default.call_count == 2
-    assert get_int_env_or_default.call_count == 2
     run_batch_analysis.assert_called_once_with(
         spark_session,
         output_root="/data/air-quality",
         city="sofia",
-        aqi_threshold=90,
-        jump_threshold=30,
     )
     spark_session.stop.assert_called_once_with()

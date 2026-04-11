@@ -13,13 +13,10 @@ from src.analytics.metrics import compute_average_pollutants
 from src.analytics.metrics import compute_dominant_pollutant_counts
 from src.analytics.metrics import compute_hourly_aqi
 from src.analytics.metrics import compute_weather_correlations
-from src.analytics.spike_detection import detect_aqi_spikes
 
 
 DEFAULT_HDFS_ROOT = "/data/air-quality"
 DEFAULT_CITY = "sofia"
-DEFAULT_AQI_SPIKE_THRESHOLD = 90
-DEFAULT_AQI_JUMP_THRESHOLD = 30
 
 CURATED_SCHEMA = StructType(
     [
@@ -115,8 +112,6 @@ def run_batch_analysis(
     spark: SparkSession,
     output_root: str,
     city: str,
-    aqi_threshold: int = DEFAULT_AQI_SPIKE_THRESHOLD,
-    jump_threshold: int = DEFAULT_AQI_JUMP_THRESHOLD,
 ) -> dict[str, DataFrame]:
     """Run the batch analytics pipeline for a city.
 
@@ -124,8 +119,6 @@ def run_batch_analysis(
         spark: The analytics session used to read curated records and run the reports.
         output_root: An HDFS root output path.
         city: A city name used in the storage layout.
-        aqi_threshold: A spike threshold used in spike detection.
-        jump_threshold: A sudden-increase threshold used in spike detection.
 
     Returns:
         A dictionary of Spark dataframes keyed by report name.
@@ -140,9 +133,4 @@ def run_batch_analysis(
         "average_pollutants": compute_average_pollutants(normalized),
         "dominant_pollutants": compute_dominant_pollutant_counts(normalized),
         "weather_correlations": compute_weather_correlations(normalized),
-        "aqi_spikes": detect_aqi_spikes(
-            normalized,
-            aqi_threshold=aqi_threshold,
-            jump_threshold=jump_threshold,
-        ),
     }
