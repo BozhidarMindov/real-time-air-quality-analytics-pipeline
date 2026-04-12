@@ -153,9 +153,7 @@ class Consumer:
             self.local_staging_dir / DEFAULT_CURATED_CACHE_FILE_NAME
         )
         self.curated_observation_cache = (
-            json.loads(
-                self.curated_observation_cache_path.read_text(encoding="utf-8")
-            )
+            json.loads(self.curated_observation_cache_path.read_text(encoding="utf-8"))
             if self.curated_observation_cache_path.exists()
             else {}
         )

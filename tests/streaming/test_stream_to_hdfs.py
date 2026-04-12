@@ -362,7 +362,9 @@ def test_consumer_write_curated_records_skips_cached_and_batch_duplicates(
             '{"timestamp":"2026-04-07T11:00:00+03:00","station_id":42}\n',
         ),
     ]
-    assert cache_path.read_text(encoding="utf-8") == '{"42":"2026-04-07T11:00:00+03:00"}'
+    assert (
+        cache_path.read_text(encoding="utf-8") == '{"42":"2026-04-07T11:00:00+03:00"}'
+    )
     logger.warning.assert_not_called()
     logger.info.assert_any_call(
         "Skipping duplicate curated record for station_id=42 timestamp=2026-04-07T10:00:00+03:00"
@@ -372,9 +374,7 @@ def test_consumer_write_curated_records_skips_cached_and_batch_duplicates(
     )
 
 
-def test_consumer_write_curated_records_skips_missing_dedup_fields(
-    tmp_path, mocker
-):
+def test_consumer_write_curated_records_skips_missing_dedup_fields(tmp_path, mocker):
     consumer_module = _load_consumer_module(mocker)
     fake_hdfs_client = FakeHDFSClient(exists_result=False)
     logger = mocker.Mock()
@@ -425,7 +425,9 @@ def test_consumer_raises_for_invalid_persisted_cache_file(tmp_path, mocker):
         return_value=FakeKafkaConsumer([]),
     )
     mocker.patch.object(
-        consumer_module.Consumer, "_create_hdfs_client", return_value=FakeHDFSClient(False)
+        consumer_module.Consumer,
+        "_create_hdfs_client",
+        return_value=FakeHDFSClient(False),
     )
     with pytest.raises(json.JSONDecodeError):
         consumer_module.Consumer(
@@ -460,7 +462,9 @@ def test_consumer_persists_cache_with_atomic_replace(tmp_path, mocker):
 
     cache_path = tmp_path / "curated_observation_cache.json"
     temp_path = tmp_path / "curated_observation_cache.json.tmp"
-    assert cache_path.read_text(encoding="utf-8") == '{"42":"2026-04-07T10:00:00+03:00"}'
+    assert (
+        cache_path.read_text(encoding="utf-8") == '{"42":"2026-04-07T10:00:00+03:00"}'
+    )
     assert temp_path.exists() is False
     replace_spy.assert_called_once_with(temp_path, cache_path)
 
