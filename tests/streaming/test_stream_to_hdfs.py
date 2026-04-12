@@ -2,6 +2,7 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
 from kafka.errors import NoBrokersAvailable
 
 
@@ -229,7 +230,9 @@ def test_consumer_write_raw_records_appends_when_daily_file_exists(mocker):
     ]
 
 
-def test_consumer_write_curated_records_creates_daily_jsonl_when_missing(mocker):
+def test_consumer_write_curated_records_creates_daily_jsonl_when_missing(
+    tmp_path, mocker
+):
     consumer_module = _load_consumer_module(mocker)
     fake_hdfs_client = FakeHDFSClient(exists_result=False)
     mocker.patch.object(
@@ -241,7 +244,10 @@ def test_consumer_write_curated_records_creates_daily_jsonl_when_missing(mocker)
         consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
     )
     consumer = consumer_module.Consumer(
-        aqicn_api_token="", output_root="/data/air-quality", city="sofia"
+        aqicn_api_token="",
+        output_root="/data/air-quality",
+        city="sofia",
+        local_staging_dir=tmp_path,
     )
     curated_records = [
         {
@@ -275,7 +281,9 @@ def test_consumer_write_curated_records_creates_daily_jsonl_when_missing(mocker)
     ]
 
 
-def test_consumer_write_curated_records_appends_to_daily_jsonl_when_present(mocker):
+def test_consumer_write_curated_records_appends_to_daily_jsonl_when_present(
+    tmp_path, mocker
+):
     consumer_module = _load_consumer_module(mocker)
     fake_hdfs_client = FakeHDFSClient(exists_result=True)
     mocker.patch.object(
@@ -287,7 +295,10 @@ def test_consumer_write_curated_records_appends_to_daily_jsonl_when_present(mock
         consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
     )
     consumer = consumer_module.Consumer(
-        aqicn_api_token="", output_root="/data/air-quality", city="sofia"
+        aqicn_api_token="",
+        output_root="/data/air-quality",
+        city="sofia",
+        local_staging_dir=tmp_path,
     )
     curated_records = [
         {
@@ -319,6 +330,151 @@ def test_consumer_write_curated_records_appends_to_daily_jsonl_when_present(mock
             '{"timestamp":"2026-04-07T10:00:00+03:00","station_id":42,"station_name":"Sofia","latitude":42.6977,"longitude":23.3219,"aqi":64,"dominant_pollutant":"pm10","pm10":31.5,"no2":18.2,"o3":11.4,"temperature":19.1,"humidity":47.0,"wind":3.5,"pressure":1008.0,"dew":7.2}\n',
         ),
     ]
+
+
+def test_consumer_write_curated_records_skips_cached_and_batch_duplicates(
+    tmp_path, mocker
+):
+    consumer_module = _load_consumer_module(mocker)
+    cache_path = tmp_path / "curated_observation_cache.json"
+    cache_path.write_text('{"42":"2026-04-07T10:00:00+03:00"}', encoding="utf-8")
+    fake_hdfs_client = FakeHDFSClient(exists_result=True)
+    logger = mocker.Mock()
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
+    )
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="",
+        output_root="/data/air-quality",
+        city="sofia",
+        local_staging_dir=tmp_path,
+        logger=logger,
+    )
+    curated_records = [
+        {"timestamp": "2026-04-07T10:00:00+03:00", "station_id": 42},
+        {"timestamp": "2026-04-07T11:00:00+03:00", "station_id": 42},
+        {"timestamp": "2026-04-07T11:00:00+03:00", "station_id": 42},
+    ]
+
+    consumer.write_curated_records(curated_records, "2026-04-07")
+
+    assert fake_hdfs_client.calls == [
+        ("exists", "/data/air-quality/sofia/curated/2026-04-07.jsonl"),
+        (
+            "append_text",
+            "/data/air-quality/sofia/curated/2026-04-07.jsonl",
+            '{"timestamp":"2026-04-07T11:00:00+03:00","station_id":42}\n',
+        ),
+    ]
+    assert cache_path.read_text(encoding="utf-8") == '{"42":"2026-04-07T11:00:00+03:00"}'
+    logger.warning.assert_not_called()
+    logger.info.assert_any_call(
+        "Skipping duplicate curated record for station_id=42 timestamp=2026-04-07T10:00:00+03:00"
+    )
+    logger.info.assert_any_call(
+        "Skipping duplicate curated record for station_id=42 timestamp=2026-04-07T11:00:00+03:00"
+    )
+
+
+def test_consumer_write_curated_records_skips_missing_dedup_fields(
+    tmp_path, mocker
+):
+    consumer_module = _load_consumer_module(mocker)
+    fake_hdfs_client = FakeHDFSClient(exists_result=False)
+    logger = mocker.Mock()
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
+    )
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="",
+        output_root="/data/air-quality",
+        city="sofia",
+        local_staging_dir=tmp_path,
+        logger=logger,
+    )
+    curated_records = [
+        {"timestamp": "2026-04-07T10:00:00+03:00", "station_id": 42},
+        {"timestamp": "2026-04-07T11:00:00+03:00", "station_id": None},
+        {"timestamp": None, "station_id": 42},
+    ]
+
+    consumer.write_curated_records(curated_records, "2026-04-07")
+
+    assert fake_hdfs_client.calls == [
+        ("exists", "/data/air-quality/sofia/curated/2026-04-07.jsonl"),
+        (
+            "create_text",
+            "/data/air-quality/sofia/curated/2026-04-07.jsonl",
+            '{"timestamp":"2026-04-07T10:00:00+03:00","station_id":42}\n',
+        ),
+    ]
+    assert (tmp_path / "curated_observation_cache.json").read_text(
+        encoding="utf-8"
+    ) == '{"42":"2026-04-07T10:00:00+03:00"}'
+    assert logger.warning.call_count == 2
+
+
+def test_consumer_raises_for_invalid_persisted_cache_file(tmp_path, mocker):
+    consumer_module = _load_consumer_module(mocker)
+    (tmp_path / "curated_observation_cache.json").write_text(
+        "not-json", encoding="utf-8"
+    )
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer, "_create_hdfs_client", return_value=FakeHDFSClient(False)
+    )
+    with pytest.raises(json.JSONDecodeError):
+        consumer_module.Consumer(
+            aqicn_api_token="",
+            output_root="/data/air-quality",
+            city="sofia",
+            local_staging_dir=tmp_path,
+        )
+
+
+def test_consumer_persists_cache_with_atomic_replace(tmp_path, mocker):
+    consumer_module = _load_consumer_module(mocker)
+    path_type = type(tmp_path)
+    replace_spy = mocker.spy(path_type, "replace")
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_kafka_consumer",
+        return_value=FakeKafkaConsumer([]),
+    )
+    mocker.patch.object(
+        consumer_module.Consumer,
+        "_create_hdfs_client",
+        return_value=FakeHDFSClient(False),
+    )
+    consumer = consumer_module.Consumer(
+        aqicn_api_token="",
+        output_root="/data/air-quality",
+        city="sofia",
+        local_staging_dir=tmp_path,
+    )
+    consumer.curated_observation_cache = {"42": "2026-04-07T10:00:00+03:00"}
+
+    consumer._persist_curated_observation_cache()
+
+    cache_path = tmp_path / "curated_observation_cache.json"
+    temp_path = tmp_path / "curated_observation_cache.json.tmp"
+    assert cache_path.read_text(encoding="utf-8") == '{"42":"2026-04-07T10:00:00+03:00"}'
+    assert temp_path.exists() is False
+    replace_spy.assert_called_once_with(temp_path, cache_path)
 
 
 def test_consumer_consume_once_groups_messages_and_writes_outputs(tmp_path, mocker):
@@ -389,32 +545,15 @@ def test_consumer_consume_once_groups_messages_and_writes_outputs(tmp_path, mock
         },
         "2026-04-06": {
             "raw_records": [{"data": {"idx": 2}}],
-            "curated_records": [
-                {
-                    "timestamp": None,
-                    "station_id": 2,
-                    "station_name": None,
-                    "latitude": None,
-                    "longitude": None,
-                    "aqi": None,
-                    "dominant_pollutant": None,
-                    "pm10": None,
-                    "no2": None,
-                    "o3": None,
-                    "temperature": None,
-                    "humidity": None,
-                    "wind": None,
-                    "pressure": None,
-                    "dew": None,
-                }
-            ],
+            "curated_records": [],
         },
     }
     logger.info.assert_any_call("Wrote 1 messages for 2026-04-07 to HDFS")
     logger.info.assert_any_call("Wrote 1 messages for 2026-04-06 to HDFS")
+    logger.warning.assert_called_once()
 
 
-def test_consumer_commits_offsets_only_after_successful_hdfs_writes(mocker):
+def test_consumer_commits_offsets_only_after_successful_hdfs_writes(tmp_path, mocker):
     consumer_module = _load_consumer_module(mocker)
     polled_records = [
         {
@@ -449,6 +588,7 @@ def test_consumer_commits_offsets_only_after_successful_hdfs_writes(mocker):
         output_root="/data/air-quality",
         city="sofia",
         processing_date="2026-04-06",
+        local_staging_dir=tmp_path,
     )
 
     consumer.consume_once()
@@ -492,28 +632,10 @@ def test_consumer_group_messages_by_day_skips_invalid_json(mocker):
     assert grouped == {
         "2026-04-07": {
             "raw_records": [{"data": {"idx": 7}}],
-            "curated_records": [
-                {
-                    "timestamp": None,
-                    "station_id": 7,
-                    "station_name": None,
-                    "latitude": None,
-                    "longitude": None,
-                    "aqi": None,
-                    "dominant_pollutant": None,
-                    "pm10": None,
-                    "no2": None,
-                    "o3": None,
-                    "temperature": None,
-                    "humidity": None,
-                    "wind": None,
-                    "pressure": None,
-                    "dew": None,
-                }
-            ],
+            "curated_records": [],
         }
     }
-    logger.warning.assert_called_once()
+    assert logger.warning.call_count == 2
 
 
 def test_consumer_run_processes_the_requested_number_of_iterations(mocker):

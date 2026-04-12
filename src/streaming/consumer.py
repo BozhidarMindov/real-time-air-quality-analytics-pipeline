@@ -1,5 +1,6 @@
 import json
 import logging
+import tempfile
 import time
 from collections import defaultdict
 from datetime import date
@@ -18,7 +19,8 @@ DEFAULT_KAFKA_TOPIC = "air_quality_sofia"
 DEFAULT_BOOTSTRAP_SERVERS = "localhost:9094"
 DEFAULT_CITY = "sofia"
 DEFAULT_OUTPUT_ROOT = "/data/air-quality"
-DEFAULT_LOCAL_STAGING_DIR = "/tmp/air-quality"
+DEFAULT_LOCAL_STAGING_DIR = str(Path(tempfile.gettempdir()) / "air-quality")
+DEFAULT_CURATED_CACHE_FILE_NAME = "curated_observation_cache.json"
 DEFAULT_CONSUMER_GROUP = "air-quality-streaming"
 DEFAULT_POLL_TIMEOUT_MS = 5000
 DEFAULT_BATCH_SIZE = 100
@@ -80,7 +82,7 @@ class Consumer:
         processing_date: The fallback day used when a payload timestamp is missing.
         hdfs_namenode_url: The Namenode WebHDFS base URL.
         hdfs_user: The HDFS user name sent with WebHDFS requests.
-        local_staging_dir: The compatibility staging path preserved for config stability.
+        local_staging_dir: The local staging path used for the curated dedup cache file.
         consumer_group: The Kafka consumer group id.
         poll_timeout_ms: The Kafka poll timeout in milliseconds.
         batch_size: The maximum number of messages requested per poll.
@@ -90,6 +92,8 @@ class Consumer:
         sleep: The sleep function used between Kafka connection attempts.
         kafka_consumer: The Kafka consumer used to read source messages.
         hdfs_client: The WebHDFS client used to persist raw and curated records.
+        curated_observation_cache_path: The local JSON cache file for the last seen observation per station.
+        curated_observation_cache: The persisted dedup cache keyed by station id.
     """
 
     def __init__(
@@ -122,7 +126,7 @@ class Consumer:
             processing_date: An optional fallback processing date.
             hdfs_namenode_url: A Namenode WebHDFS base URL.
             hdfs_user: An HDFS user name.
-            local_staging_dir: An unused compatibility setting kept for config stability.
+            local_staging_dir: The local staging directory used for the curated dedup cache.
             consumer_group: A Kafka consumer group id.
             poll_timeout_ms: A Kafka poll timeout in milliseconds.
             batch_size: A maximum number of Kafka messages per poll.
@@ -149,6 +153,16 @@ class Consumer:
         self.sleep = sleep
         self.kafka_consumer = self._create_kafka_consumer()
         self.hdfs_client = self._create_hdfs_client()
+        self.curated_observation_cache_path = (
+            self.local_staging_dir / DEFAULT_CURATED_CACHE_FILE_NAME
+        )
+        self.curated_observation_cache = (
+            json.loads(
+                self.curated_observation_cache_path.read_text(encoding="utf-8")
+            )
+            if self.curated_observation_cache_path.exists()
+            else {}
+        )
 
     def run(self, iterations: int | None = None) -> None:
         """Run the streaming loop.
@@ -220,10 +234,10 @@ class Consumer:
                 continue
 
             day = self.extract_day(payload)
+            curated_record = self.extract_curated_record(payload)
             grouped_records[day]["raw_records"].append(payload)
-            grouped_records[day]["curated_records"].append(
-                self.extract_curated_record(payload)
-            )
+            if self.build_curated_record_key(curated_record) is not None:
+                grouped_records[day]["curated_records"].append(curated_record)
 
         return dict(grouped_records)
 
@@ -334,16 +348,93 @@ class Consumer:
             return None
 
         path = self.build_curated_output_path(day)
+        filtered_records, updated_cache = self.filter_curated_records(curated_records)
+        if not filtered_records:
+            return None
+
         content = "".join(
             json.dumps(record, separators=(",", ":")) + "\n"
-            for record in curated_records
+            for record in filtered_records
         )
         if self.hdfs_client.exists(path):
             self.hdfs_client.append_text(path, content)
         else:
             self.hdfs_client.create_text(path, content)
 
+        self.curated_observation_cache = updated_cache
+        self._persist_curated_observation_cache()
         return path
+
+    def build_curated_record_key(self, curated_record: dict) -> tuple[str, str] | None:
+        """Return the deduplication key for a curated record.
+
+        Args:
+            curated_record: The curated AQICN record.
+
+        Returns:
+            The `(station_id, timestamp)` key, or `None` when either field is missing.
+        """
+        station_id = curated_record.get("station_id")
+        timestamp = curated_record.get("timestamp")
+        if station_id is None or timestamp is None:
+            self.logger.warning(
+                "Skipping curated record without station_id or timestamp"
+            )
+            return None
+
+        return str(station_id), timestamp
+
+    def filter_curated_records(
+        self, curated_records: list[dict]
+    ) -> tuple[list[dict], dict[str, str]]:
+        """Filter curated records against the persisted observation cache.
+
+        Args:
+            curated_records: The curated records for the current day.
+
+        Returns:
+            The curated records to write and the updated cache state.
+        """
+        updated_cache = dict(self.curated_observation_cache)
+        filtered_records: list[dict] = []
+
+        for record in curated_records:
+            key = self.build_curated_record_key(record)
+            if key is None:
+                continue
+
+            station_id, timestamp = key
+            last_seen_timestamp = updated_cache.get(station_id)
+            if last_seen_timestamp == timestamp:
+                self.logger.info(
+                    f"Skipping duplicate curated record for station_id={station_id} timestamp={timestamp}"
+                )
+                continue
+
+            filtered_records.append(record)
+            updated_cache[station_id] = timestamp
+
+        return filtered_records, updated_cache
+
+    def _persist_curated_observation_cache(self) -> None:
+        """Persist the curated observation cache to local storage.
+
+        Returns:
+            None.
+        """
+        self.local_staging_dir.mkdir(parents=True, exist_ok=True)
+        temp_path = self.curated_observation_cache_path.with_suffix(
+            f"{self.curated_observation_cache_path.suffix}.tmp"
+        )
+        temp_path.write_text(
+            json.dumps(
+                self.curated_observation_cache,
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        temp_path.replace(self.curated_observation_cache_path)
 
     def get_geo_value(self, data: dict, index: int):
         """Return a latitude or longitude value from the AQICN geo array.
