@@ -117,7 +117,7 @@ def test_consumer_extract_curated_record_keeps_only_required_fields(mocker):
         "_create_hdfs_client",
         return_value=FakeHDFSClient(False),
     )
-    consumer = consumer_module.Consumer(aqicn_api_token="")
+    consumer = consumer_module.Consumer()
     payload = {
         "data": {
             "idx": 42,
@@ -172,9 +172,7 @@ def test_consumer_build_raw_output_path_uses_single_daily_jsonl_file(mocker):
         "_create_hdfs_client",
         return_value=FakeHDFSClient(False),
     )
-    consumer = consumer_module.Consumer(
-        aqicn_api_token="", output_root="/data/air-quality", city="sofia"
-    )
+    consumer = consumer_module.Consumer(output_root="/data/air-quality", city="sofia")
 
     result = consumer.build_raw_output_path("2026-04-07")
 
@@ -193,9 +191,7 @@ def test_consumer_build_curated_output_path_uses_daily_jsonl_file(mocker):
         "_create_hdfs_client",
         return_value=FakeHDFSClient(False),
     )
-    consumer = consumer_module.Consumer(
-        aqicn_api_token="", output_root="/data/air-quality", city="sofia"
-    )
+    consumer = consumer_module.Consumer(output_root="/data/air-quality", city="sofia")
 
     result = consumer.build_curated_output_path("2026-04-07")
 
@@ -213,9 +209,7 @@ def test_consumer_write_raw_records_appends_when_daily_file_exists(mocker):
     mocker.patch.object(
         consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
     )
-    consumer = consumer_module.Consumer(
-        aqicn_api_token="", output_root="/data/air-quality", city="sofia"
-    )
+    consumer = consumer_module.Consumer(output_root="/data/air-quality", city="sofia")
     records = [{"data": {"idx": 1}}, {"data": {"idx": 2}}]
 
     consumer.write_raw_records(records, "2026-04-07")
@@ -244,7 +238,6 @@ def test_consumer_write_curated_records_creates_daily_jsonl_when_missing(
         consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
     )
     consumer = consumer_module.Consumer(
-        aqicn_api_token="",
         output_root="/data/air-quality",
         city="sofia",
         local_staging_dir=tmp_path,
@@ -295,7 +288,6 @@ def test_consumer_write_curated_records_appends_to_daily_jsonl_when_present(
         consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
     )
     consumer = consumer_module.Consumer(
-        aqicn_api_token="",
         output_root="/data/air-quality",
         city="sofia",
         local_staging_dir=tmp_path,
@@ -349,7 +341,6 @@ def test_consumer_write_curated_records_skips_cached_and_batch_duplicates(
         consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
     )
     consumer = consumer_module.Consumer(
-        aqicn_api_token="",
         output_root="/data/air-quality",
         city="sofia",
         local_staging_dir=tmp_path,
@@ -396,7 +387,6 @@ def test_consumer_write_curated_records_skips_missing_dedup_fields(
         consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
     )
     consumer = consumer_module.Consumer(
-        aqicn_api_token="",
         output_root="/data/air-quality",
         city="sofia",
         local_staging_dir=tmp_path,
@@ -439,7 +429,6 @@ def test_consumer_raises_for_invalid_persisted_cache_file(tmp_path, mocker):
     )
     with pytest.raises(json.JSONDecodeError):
         consumer_module.Consumer(
-            aqicn_api_token="",
             output_root="/data/air-quality",
             city="sofia",
             local_staging_dir=tmp_path,
@@ -461,7 +450,6 @@ def test_consumer_persists_cache_with_atomic_replace(tmp_path, mocker):
         return_value=FakeHDFSClient(False),
     )
     consumer = consumer_module.Consumer(
-        aqicn_api_token="",
         output_root="/data/air-quality",
         city="sofia",
         local_staging_dir=tmp_path,
@@ -508,7 +496,6 @@ def test_consumer_consume_once_groups_messages_and_writes_outputs(tmp_path, mock
         consumer_module.Consumer, "_create_hdfs_client", return_value=fake_hdfs_client
     )
     consumer = consumer_module.Consumer(
-        aqicn_api_token="",
         output_root="/data/air-quality",
         city="sofia",
         processing_date="2026-04-06",
@@ -584,7 +571,6 @@ def test_consumer_commits_offsets_only_after_successful_hdfs_writes(tmp_path, mo
     )
 
     consumer = consumer_module.Consumer(
-        aqicn_api_token="",
         output_root="/data/air-quality",
         city="sofia",
         processing_date="2026-04-06",
@@ -623,9 +609,7 @@ def test_consumer_group_messages_by_day_skips_invalid_json(mocker):
         "_create_hdfs_client",
         return_value=FakeHDFSClient(False),
     )
-    consumer = consumer_module.Consumer(
-        aqicn_api_token="", processing_date="2026-04-07", logger=logger
-    )
+    consumer = consumer_module.Consumer(processing_date="2026-04-07", logger=logger)
 
     grouped = consumer.group_messages_by_day([b"not-json", b'{"data":{"idx":7}}'])
 
@@ -650,7 +634,7 @@ def test_consumer_run_processes_the_requested_number_of_iterations(mocker):
         "_create_hdfs_client",
         return_value=FakeHDFSClient(False),
     )
-    consumer = consumer_module.Consumer(aqicn_api_token="")
+    consumer = consumer_module.Consumer()
     consume_once = mocker.patch.object(consumer, "consume_once")
 
     consumer.run(iterations=3)
@@ -676,7 +660,6 @@ def test_consumer_retries_kafka_connection_when_broker_is_temporarily_unavailabl
     )
 
     consumer = consumer_module.Consumer(
-        aqicn_api_token="",
         kafka_connect_retry_attempts=2,
         kafka_connect_retry_backoff_seconds=7,
         sleep=sleep,

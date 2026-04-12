@@ -42,7 +42,6 @@ def test_main_reads_environment_and_forwards_values(mocker):
     configure_logging.assert_called_once_with()
     assert get_env_or_default.call_count == 8
     consumer_class.assert_called_once_with(
-        aqicn_api_token="",
         city="varna",
         kafka_bootstrap_servers="broker:9092",
         kafka_topic="air_quality_varna",
@@ -82,7 +81,6 @@ def test_main_uses_streaming_defaults_when_env_is_missing_or_blank(mocker):
 
     assert result == 0
     consumer_class.assert_called_once_with(
-        aqicn_api_token="",
         city="sofia",
         kafka_bootstrap_servers=run_streaming.DEFAULT_BOOTSTRAP_SERVERS,
         kafka_topic=run_streaming.DEFAULT_KAFKA_TOPIC,

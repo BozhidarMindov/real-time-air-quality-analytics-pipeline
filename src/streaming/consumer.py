@@ -74,7 +74,6 @@ class Consumer:
     """A Kafka consumer that writes raw and curated JSON data to HDFS.
 
     Attributes:
-        aqicn_api_token: The unused AQICN token placeholder kept for config symmetry.
         city: The city name used in HDFS output paths.
         kafka_bootstrap_servers: The configured Kafka bootstrap server list.
         kafka_topic: The Kafka topic consumed by the streaming job.
@@ -98,7 +97,6 @@ class Consumer:
 
     def __init__(
         self,
-        aqicn_api_token: str = "",
         city: str = DEFAULT_CITY,
         kafka_bootstrap_servers: str = DEFAULT_BOOTSTRAP_SERVERS,
         kafka_topic: str = DEFAULT_KAFKA_TOPIC,
@@ -118,7 +116,6 @@ class Consumer:
         """Initialize the streaming consumer.
 
         Args:
-            aqicn_api_token: An unused placeholder kept for config symmetry with the producer.
             city: A city name used for output paths.
             kafka_bootstrap_servers: A comma-separated Kafka bootstrap server list.
             kafka_topic: A Kafka topic name.
@@ -135,7 +132,6 @@ class Consumer:
             logger: An optional application logger.
             sleep: A sleep function used between Kafka connection attempts.
         """
-        self.aqicn_api_token = aqicn_api_token
         self.city = city
         self.kafka_bootstrap_servers = kafka_bootstrap_servers
         self.kafka_topic = kafka_topic

@@ -20,7 +20,6 @@ def main() -> int:
     """
     configure_logging()
     consumer = Consumer(
-        aqicn_api_token="",
         kafka_bootstrap_servers=get_env_or_default(
             "KAFKA_BOOTSTRAP_SERVERS",
             DEFAULT_BOOTSTRAP_SERVERS,
