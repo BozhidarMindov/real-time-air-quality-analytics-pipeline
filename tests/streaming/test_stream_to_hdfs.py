@@ -54,12 +54,6 @@ class FakeHDFSClient:
     def append_text(self, path, content):
         self.calls.append(("append_text", path, content))
 
-    def ensure_directory(self, path):
-        self.calls.append(("ensure_directory", path))
-
-    def upload_file(self, local_path, remote_path):
-        self.calls.append(("upload_file", Path(local_path), remote_path))
-
 
 class FakeKafkaRecord:
     def __init__(self, value):

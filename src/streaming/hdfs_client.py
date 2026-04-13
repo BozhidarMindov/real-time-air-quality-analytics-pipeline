@@ -59,22 +59,6 @@ class HDFSClient:
         response.raise_for_status()
         return True
 
-    def ensure_directory(self, path: Path | str) -> None:
-        """Create a directory in HDFS when it is missing.
-
-        Args:
-            path: An HDFS directory path.
-
-        Returns:
-            None.
-        """
-        response = self.session.put(
-            self._build_url(path),
-            params={"op": "MKDIRS", "user.name": self.user},
-            timeout=self.timeout_seconds,
-        )
-        response.raise_for_status()
-
     def create_text(self, path: Path | str, content: str) -> None:
         """Create a new UTF-8 text file in HDFS.
 
@@ -98,18 +82,6 @@ class HDFSClient:
             None.
         """
         self._write_bytes(path, content.encode("utf-8"), op="APPEND")
-
-    def upload_file(self, local_path: Path | str, remote_path: Path | str) -> None:
-        """Upload a local file into HDFS.
-
-        Args:
-            local_path: A local file path.
-            remote_path: An HDFS file path.
-
-        Returns:
-            None.
-        """
-        self._write_bytes(remote_path, Path(local_path).read_bytes(), op="CREATE")
 
     def _build_url(self, path: Path | str) -> str:
         """Build the Namenode WebHDFS URL for a path.
