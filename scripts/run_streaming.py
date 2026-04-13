@@ -90,7 +90,9 @@ def main() -> int:
     """
     configure_logging()
     logger = logging.getLogger("air_quality.streaming")
-    kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS") or DEFAULT_BOOTSTRAP_SERVERS
+    kafka_bootstrap_servers = (
+        os.getenv("KAFKA_BOOTSTRAP_SERVERS") or DEFAULT_BOOTSTRAP_SERVERS
+    )
     kafka_topic = os.getenv("KAFKA_TOPIC") or DEFAULT_KAFKA_TOPIC
     city = os.getenv("CITY") or DEFAULT_CITY
     output_root = os.getenv("OUTPUT_ROOT") or DEFAULT_OUTPUT_ROOT

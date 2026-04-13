@@ -34,7 +34,9 @@ def main(env_path: str | None = None) -> int:
     kafka_producer = KafkaProducer(
         bootstrap_servers=[
             server.strip()
-            for server in (os.getenv("KAFKA_BOOTSTRAP_SERVERS") or "localhost:9094").split(",")
+            for server in (
+                os.getenv("KAFKA_BOOTSTRAP_SERVERS") or "localhost:9094"
+            ).split(",")
             if server.strip()
         ]
     )

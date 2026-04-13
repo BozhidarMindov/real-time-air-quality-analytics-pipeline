@@ -36,6 +36,7 @@ class Consumer:
         curated_observation_cache_path: The local JSON cache file for the last seen observation per station.
         curated_observation_cache: The persisted dedup cache keyed by station id.
     """
+
     def __init__(
         self,
         kafka_consumer: KafkaConsumer,

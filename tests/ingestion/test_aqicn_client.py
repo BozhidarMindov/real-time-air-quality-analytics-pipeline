@@ -71,7 +71,10 @@ def test_fetch_city_feed_returns_json_and_builds_request():
 def test_fetch_city_feed_retries_after_transient_request_failure():
     payload = {"status": "ok", "data": {"aqi": 42}}
     session = FakeSession(
-        [requests.exceptions.ConnectionError("temporary failure"), FakeResponse(payload)]
+        [
+            requests.exceptions.ConnectionError("temporary failure"),
+            FakeResponse(payload),
+        ]
     )
     sleep_calls = []
 
@@ -161,7 +164,11 @@ def test_fetch_city_feed_raises_on_api_status_error_without_retry():
 
 def test_fetch_city_feed_does_not_retry_unexpected_runtime_error():
     session = FakeSession(
-        [RuntimeError("broken session"), RuntimeError("broken session"), RuntimeError("broken session")]
+        [
+            RuntimeError("broken session"),
+            RuntimeError("broken session"),
+            RuntimeError("broken session"),
+        ]
     )
     sleep_calls = []
 

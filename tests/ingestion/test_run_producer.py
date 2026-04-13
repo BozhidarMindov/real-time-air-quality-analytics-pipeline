@@ -59,9 +59,7 @@ def test_main_reads_environment_and_starts_producer(mocker):
         retry_attempts=7,
         retry_backoff_seconds=9,
     )
-    kafka_producer_class.assert_called_once_with(
-        bootstrap_servers=["broker:9092"]
-    )
+    kafka_producer_class.assert_called_once_with(bootstrap_servers=["broker:9092"])
     producer_class.assert_called_once_with(
         aqicn_client=aqicn_client,
         kafka_producer=kafka_producer,
@@ -115,9 +113,7 @@ def test_main_uses_defaults_when_producer_env_is_missing_or_blank(mocker):
         retry_attempts=3,
         retry_backoff_seconds=5,
     )
-    kafka_producer_class.assert_called_once_with(
-        bootstrap_servers=["localhost:9094"]
-    )
+    kafka_producer_class.assert_called_once_with(bootstrap_servers=["localhost:9094"])
     producer_class.assert_called_once_with(
         aqicn_client=aqicn_client,
         kafka_producer=kafka_producer,

@@ -64,4 +64,6 @@ def serialize_jsonl(records: list[dict]) -> str:
     Returns:
         The compact JSON Lines payload.
     """
-    return "".join(json.dumps(record, separators=(",", ":")) + "\n" for record in records)
+    return "".join(
+        json.dumps(record, separators=(",", ":")) + "\n" for record in records
+    )

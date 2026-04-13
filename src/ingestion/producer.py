@@ -21,13 +21,14 @@ class Producer:
         logger: The application logger for ingestion events.
         sleep: The sleep function used between polling iterations.
     """
+
     def __init__(
         self,
         aqicn_client: AQICNClient,
         kafka_producer: KafkaProducer,
         city: str,
         kafka_topic: str,
-        poll_interval_seconds: int = DEFAULT_POLL_INTERVAL_SECONDS ,
+        poll_interval_seconds: int = DEFAULT_POLL_INTERVAL_SECONDS,
         logger: logging.Logger | None = None,
         sleep=time.sleep,
     ) -> None:

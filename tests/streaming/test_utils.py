@@ -17,7 +17,9 @@ def test_normalize_hdfs_path_normalizes_hdfs_uri_with_backslashes():
 
 
 def test_build_daily_output_path_builds_jsonl_path_for_city_and_day():
-    result = build_daily_output_path("/data/air-quality", "sofia", "curated", "2026-04-07")
+    result = build_daily_output_path(
+        "/data/air-quality", "sofia", "curated", "2026-04-07"
+    )
 
     assert result == "/data/air-quality/sofia/curated/2026-04-07.jsonl"
 
@@ -30,7 +32,4 @@ def test_serialize_jsonl_returns_compact_json_lines():
         ]
     )
 
-    assert result == (
-        '{"city":"sofia","aqi":42}\n'
-        '{"city":"varna","aqi":null}\n'
-    )
+    assert result == ('{"city":"sofia","aqi":42}\n{"city":"varna","aqi":null}\n')

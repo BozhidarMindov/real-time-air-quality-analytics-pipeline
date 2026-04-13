@@ -9,6 +9,7 @@ from src.streaming.utils import normalize_hdfs_path
 DEFAULT_HDFS_NAMENODE_URL = "http://namenode:9870"
 DEFAULT_HDFS_USER = "hdfs"
 
+
 class HDFSClient:
     """A small WebHDFS client used by the streaming consumer.
 
