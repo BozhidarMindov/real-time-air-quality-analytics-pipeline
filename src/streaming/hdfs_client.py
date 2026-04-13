@@ -3,32 +3,11 @@ from urllib.parse import quote
 
 import requests
 
+from src.streaming.utils import normalize_hdfs_path
+
 
 DEFAULT_HDFS_NAMENODE_URL = "http://namenode:9870"
 DEFAULT_HDFS_USER = "hdfs"
-
-
-def normalize_hdfs_path(path: Path | str) -> str:
-    """Normalize a local or HDFS path into an absolute HDFS path string.
-
-    Args:
-        path: A local-style or HDFS-style path value.
-
-    Returns:
-        The absolute HDFS path without a trailing slash.
-    """
-    value = path.as_posix() if isinstance(path, Path) else str(path)
-    value = value.strip()
-    if value.startswith("hdfs://"):
-        suffix = value.split("://", 1)[1]
-        slash_index = suffix.find("/")
-        value = suffix[slash_index:] if slash_index >= 0 else "/"
-    value = value.replace("\\", "/")
-    value = value.rstrip("/")
-    if not value.startswith("/"):
-        value = f"/{value}"
-    return value or "/"
-
 
 class HDFSClient:
     """A small WebHDFS client used by the streaming consumer.
