@@ -1,9 +1,9 @@
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 from kafka import KafkaProducer
 
-from src.common.env import get_env_or_default
 from src.common.logging import configure_logging
 from src.ingestion.aqicn_client import AQICNClient
 from src.ingestion.producer import Producer
@@ -25,20 +25,16 @@ def main(env_path: str | None = None) -> int:
     dotenv_path = Path(env_path) if env_path is not None else DEFAULT_ENV_PATH
     load_dotenv(dotenv_path=dotenv_path)
     aqicn_client = AQICNClient(
-        api_token=get_env_or_default("AQICN_API_TOKEN", ""),
-        base_url=get_env_or_default("AQICN_BASE_URL", "https://api.waqi.info/feed"),
-        request_timeout_seconds=int(
-            get_env_or_default("REQUEST_TIMEOUT_SECONDS", "30")
-        ),
-        retry_attempts=int(get_env_or_default("RETRY_ATTEMPTS", "3")),
-        retry_backoff_seconds=int(get_env_or_default("RETRY_BACKOFF_SECONDS", "5")),
+        api_token=os.getenv("AQICN_API_TOKEN") or "",
+        base_url=os.getenv("AQICN_BASE_URL") or "https://api.waqi.info/feed",
+        request_timeout_seconds=int(os.getenv("REQUEST_TIMEOUT_SECONDS") or "30"),
+        retry_attempts=int(os.getenv("RETRY_ATTEMPTS") or "3"),
+        retry_backoff_seconds=int(os.getenv("RETRY_BACKOFF_SECONDS") or "5"),
     )
     kafka_producer = KafkaProducer(
         bootstrap_servers=[
             server.strip()
-            for server in get_env_or_default(
-                "KAFKA_BOOTSTRAP_SERVERS", "localhost:9094"
-            ).split(",")
+            for server in (os.getenv("KAFKA_BOOTSTRAP_SERVERS") or "localhost:9094").split(",")
             if server.strip()
         ]
     )
@@ -46,9 +42,9 @@ def main(env_path: str | None = None) -> int:
     producer = Producer(
         aqicn_client=aqicn_client,
         kafka_producer=kafka_producer,
-        city=get_env_or_default("CITY", "sofia"),
-        kafka_topic=get_env_or_default("KAFKA_TOPIC", "air_quality_sofia"),
-        poll_interval_seconds=int(get_env_or_default("POLL_INTERVAL_SECONDS", "60")),
+        city=os.getenv("CITY") or "sofia",
+        kafka_topic=os.getenv("KAFKA_TOPIC") or "air_quality_sofia",
+        poll_interval_seconds=int(os.getenv("POLL_INTERVAL_SECONDS") or "60"),
     )
     producer.run()
     return 0

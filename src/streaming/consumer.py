@@ -5,7 +5,6 @@ from datetime import date
 from pathlib import Path
 
 from src.streaming.hdfs_client import HDFSClient
-from src.streaming.curation import build_curated_record_key
 from src.streaming.curation import extract_curated_record
 from src.streaming.curation import extract_day
 from src.streaming.curation import filter_curated_records
@@ -149,8 +148,7 @@ class Consumer:
             day = extract_day(payload, self.processing_date)
             curated_record = extract_curated_record(payload)
             grouped_records[day]["raw_records"].append(payload)
-            if build_curated_record_key(curated_record, logger=self.logger) is not None:
-                grouped_records[day]["curated_records"].append(curated_record)
+            grouped_records[day]["curated_records"].append(curated_record)
 
         return dict(grouped_records)
 

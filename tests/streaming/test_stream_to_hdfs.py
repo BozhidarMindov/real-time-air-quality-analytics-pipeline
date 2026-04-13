@@ -295,7 +295,25 @@ def test_consumer_consume_once_groups_messages_and_writes_outputs(tmp_path, mock
         },
         "2026-04-06": {
             "raw_records": [{"data": {"idx": 2}}],
-            "curated_records": [],
+            "curated_records": [
+                {
+                    "timestamp": None,
+                    "station_id": 2,
+                    "station_name": None,
+                    "latitude": None,
+                    "longitude": None,
+                    "aqi": None,
+                    "dominant_pollutant": None,
+                    "pm10": None,
+                    "no2": None,
+                    "o3": None,
+                    "temperature": None,
+                    "humidity": None,
+                    "wind": None,
+                    "pressure": None,
+                    "dew": None,
+                }
+            ],
         },
     }
     logger.info.assert_any_call("Wrote 1 messages for 2026-04-07 to HDFS")
@@ -352,7 +370,9 @@ def test_consumer_commits_offsets_only_after_successful_hdfs_writes(tmp_path, mo
     assert fake_kafka_consumer.commit_count == 1
 
 
-def test_consumer_group_messages_by_day_skips_invalid_json(mocker):
+def test_consumer_group_messages_by_day_keeps_curated_projection_when_dedup_fields_are_missing(
+    mocker,
+):
     consumer_module = _load_consumer_module(mocker)
     logger = mocker.Mock()
     consumer = consumer_module.Consumer(
@@ -370,10 +390,28 @@ def test_consumer_group_messages_by_day_skips_invalid_json(mocker):
     assert grouped == {
         "2026-04-07": {
             "raw_records": [{"data": {"idx": 7}}],
-            "curated_records": [],
+            "curated_records": [
+                {
+                    "timestamp": None,
+                    "station_id": 7,
+                    "station_name": None,
+                    "latitude": None,
+                    "longitude": None,
+                    "aqi": None,
+                    "dominant_pollutant": None,
+                    "pm10": None,
+                    "no2": None,
+                    "o3": None,
+                    "temperature": None,
+                    "humidity": None,
+                    "wind": None,
+                    "pressure": None,
+                    "dew": None,
+                }
+            ],
         }
     }
-    assert logger.warning.call_count == 2
+    assert logger.warning.call_count == 1
 
 
 def test_consumer_run_processes_the_requested_number_of_iterations(mocker):

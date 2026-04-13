@@ -73,14 +73,12 @@ class AQICNClient:
                 )
                 response.raise_for_status()
                 payload = response.json()
-                if payload.get("status") != "ok":
-                    raise RuntimeError(
-                        f"AQICN API returned status {payload.get('status')}"
-                    )
-                return payload
-            except Exception:
+            except (requests.exceptions.RequestException, ValueError):
                 if attempt >= self.retry_attempts:
                     raise
                 self.sleep(self.retry_backoff_seconds)
+                continue
 
-        raise RuntimeError("AQICN fetch failed unexpectedly")
+            if payload.get("status") != "ok":
+                raise RuntimeError(f"AQICN API returned status {payload.get('status')}")
+            return payload

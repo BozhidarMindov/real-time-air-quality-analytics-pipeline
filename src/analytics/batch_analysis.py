@@ -106,18 +106,6 @@ def normalize_curated_dataframe(dataframe: DataFrame) -> DataFrame:
     ).withColumn("hour", F.hour(F.col("event_timestamp")))
 
 
-def to_pandas_table(dataframe: DataFrame):
-    """Convert analytics results into a notebook-friendly table.
-
-    Args:
-        dataframe: The analytics result to convert for notebook display.
-
-    Returns:
-        A pandas dataframe for notebook display.
-    """
-    return dataframe.toPandas()
-
-
 def run_batch_analysis(
     spark: SparkSession,
     output_root: str,

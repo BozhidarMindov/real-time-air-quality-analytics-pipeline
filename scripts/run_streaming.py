@@ -1,4 +1,5 @@
 import logging
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -6,7 +7,6 @@ from pathlib import Path
 from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
 
-from src.common.env import get_env_or_default
 from src.common.logging import configure_logging
 from src.streaming.consumer import Consumer
 from src.streaming.hdfs_client import DEFAULT_HDFS_NAMENODE_URL
@@ -90,35 +90,14 @@ def main() -> int:
     """
     configure_logging()
     logger = logging.getLogger("air_quality.streaming")
-    kafka_bootstrap_servers = get_env_or_default(
-        "KAFKA_BOOTSTRAP_SERVERS",
-        DEFAULT_BOOTSTRAP_SERVERS,
-    )
-    kafka_topic = get_env_or_default(
-        "KAFKA_TOPIC",
-        DEFAULT_KAFKA_TOPIC,
-    )
-    city = get_env_or_default(
-        "CITY",
-        DEFAULT_CITY,
-    )
-    output_root = get_env_or_default(
-        "OUTPUT_ROOT",
-        DEFAULT_OUTPUT_ROOT,
-    )
-    processing_date = get_env_or_default("PROCESSING_DATE", None)
-    hdfs_namenode_url = get_env_or_default(
-        "HDFS_NAMENODE_URL",
-        DEFAULT_HDFS_NAMENODE_URL,
-    )
-    hdfs_user = get_env_or_default(
-        "HDFS_USER",
-        DEFAULT_HDFS_USER,
-    )
-    local_staging_dir = get_env_or_default(
-        "LOCAL_STAGING_DIR",
-        DEFAULT_LOCAL_STAGING_DIR,
-    )
+    kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS") or DEFAULT_BOOTSTRAP_SERVERS
+    kafka_topic = os.getenv("KAFKA_TOPIC") or DEFAULT_KAFKA_TOPIC
+    city = os.getenv("CITY") or DEFAULT_CITY
+    output_root = os.getenv("OUTPUT_ROOT") or DEFAULT_OUTPUT_ROOT
+    processing_date = os.getenv("PROCESSING_DATE") or None
+    hdfs_namenode_url = os.getenv("HDFS_NAMENODE_URL") or DEFAULT_HDFS_NAMENODE_URL
+    hdfs_user = os.getenv("HDFS_USER") or DEFAULT_HDFS_USER
+    local_staging_dir = os.getenv("LOCAL_STAGING_DIR") or DEFAULT_LOCAL_STAGING_DIR
     kafka_consumer = create_kafka_consumer(
         kafka_bootstrap_servers=kafka_bootstrap_servers,
         kafka_topic=kafka_topic,

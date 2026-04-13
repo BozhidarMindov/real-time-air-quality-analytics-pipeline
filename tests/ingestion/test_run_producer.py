@@ -40,10 +40,10 @@ def test_main_reads_environment_and_starts_producer(mocker):
     )
     load_dotenv = mocker.patch.object(run_producer, "load_dotenv")
     configure_logging = mocker.patch.object(run_producer, "configure_logging")
-    get_env_or_default = mocker.patch.object(
-        run_producer,
-        "get_env_or_default",
-        side_effect=lambda key, default: env_values.get(key) or default,
+    getenv = mocker.patch.object(
+        run_producer.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
     )
 
     result = run_producer.main()
@@ -51,7 +51,7 @@ def test_main_reads_environment_and_starts_producer(mocker):
     assert result == 0
     load_dotenv.assert_called_once_with(dotenv_path=run_producer.DEFAULT_ENV_PATH)
     configure_logging.assert_called_once_with()
-    assert get_env_or_default.call_count == 9
+    assert getenv.call_count == 9
     aqicn_client_class.assert_called_once_with(
         api_token="token",
         base_url="https://example.test/feed",
@@ -100,9 +100,9 @@ def test_main_uses_defaults_when_producer_env_is_missing_or_blank(mocker):
     mocker.patch.object(run_producer, "load_dotenv")
     mocker.patch.object(run_producer, "configure_logging")
     mocker.patch.object(
-        run_producer,
-        "get_env_or_default",
-        side_effect=lambda key, default: env_values.get(key) or default,
+        run_producer.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
     )
 
     result = run_producer.main()

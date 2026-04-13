@@ -73,14 +73,6 @@ def test_run_batch_analysis_returns_expected_summary_keys(spark_session, mocker)
     }
 
 
-def test_to_pandas_table_returns_pandas_dataframe(spark_session):
-    source = spark_session.createDataFrame([{"hour": 10, "avg_aqi": 70.0}])
-
-    result = batch_analysis.to_pandas_table(source)
-
-    assert result.to_dict("records") == [{"hour": 10, "avg_aqi": 70.0}]
-
-
 def test_main_reads_environment_and_calls_run_batch_analysis(mocker):
     run_analytics = _load_run_analytics_module()
     logger = mocker.Mock()
@@ -107,16 +99,16 @@ def test_main_reads_environment_and_calls_run_batch_analysis(mocker):
         "CITY": "sofia",
         "OUTPUT_ROOT": "/data/air-quality",
     }
-    get_env_or_default = mocker.patch.object(
-        run_analytics,
-        "get_env_or_default",
-        side_effect=lambda key, default: env_values.get(key) or default,
+    getenv = mocker.patch.object(
+        run_analytics.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
     )
     result = run_analytics.main()
 
     assert result == 0
     configure_logging.assert_called_once_with()
-    assert get_env_or_default.call_count == 2
+    assert getenv.call_count == 2
     run_batch_analysis.assert_called_once_with(
         spark_session,
         output_root="/data/air-quality",
