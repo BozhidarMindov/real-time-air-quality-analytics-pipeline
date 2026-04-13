@@ -8,7 +8,7 @@
 
 - Fetches live air quality data for `sofia` from the **[AQICN API](https://aqicn.org/api/)**
 - Publishes raw observations to **Kafka** with a dedicated ingestion producer
-- Consumes **Kafka** messages and stores both raw and curated daily JSONL datasets in HDFS
+- Consumes **Kafka** messages and stores both raw and curated daily JSONL datasets in **HDFS**
 - Deduplicates curated station observations before persisting them
 - Runs **Spark** batch analytics over the curated HDFS dataset
 - Exposes a **Jupyter** notebook container for exploring analytics results
