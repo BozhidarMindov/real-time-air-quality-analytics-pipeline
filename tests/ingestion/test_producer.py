@@ -1,6 +1,5 @@
 import json
 
-import src.ingestion.producer as producer_module
 from src.ingestion.producer import Producer
 
 
@@ -42,15 +41,11 @@ def test_publish_once_sends_raw_json_to_kafka_topic(mocker):
     fake_client = FakeAQICNClient([payload])
     fake_kafka_producer = FakeKafkaProducer()
 
-    mocker.patch.object(producer_module, "AQICNClient", return_value=fake_client)
-    mocker.patch.object(
-        producer_module.Producer,
-        "_create_kafka_producer",
-        return_value=fake_kafka_producer,
-    )
-
     producer = Producer(
-        aqicn_api_token="token", city="sofia", kafka_topic="air_quality_sofia"
+        aqicn_client=fake_client,
+        kafka_producer=fake_kafka_producer,
+        city="sofia",
+        kafka_topic="air_quality_sofia",
     )
     producer.logger = fake_logger
 
@@ -74,15 +69,12 @@ def test_run_sleeps_between_iterations(mocker):
     sleep_calls = []
     fake_client = FakeAQICNClient([{"status": "ok"}, {"status": "ok"}])
 
-    mocker.patch.object(producer_module, "AQICNClient", return_value=fake_client)
-    mocker.patch.object(
-        producer_module.Producer,
-        "_create_kafka_producer",
-        return_value=FakeKafkaProducer(),
-    )
-
     producer = Producer(
-        aqicn_api_token="token", city="sofia", poll_interval_seconds=120
+        aqicn_client=fake_client,
+        kafka_producer=FakeKafkaProducer(),
+        city="sofia",
+        kafka_topic="air_quality_sofia",
+        poll_interval_seconds=120,
     )
     producer.logger = FakeLogger()
     producer.sleep = sleep_calls.append
@@ -90,29 +82,3 @@ def test_run_sleeps_between_iterations(mocker):
     producer.run(iterations=2)
 
     assert sleep_calls == [120]
-
-
-def test_producer_builds_kafka_producer_from_bootstrap_servers(mocker):
-    captured = {}
-
-    class ProducerSpy:
-        def __init__(self, **kwargs):
-            captured.update(kwargs)
-
-    class FakeAQICNClientClass:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-
-        def fetch_city_feed(self, city):
-            return {"status": "ok", "city": city}
-
-    mocker.patch.object(producer_module, "KafkaProducer", ProducerSpy)
-    mocker.patch.object(producer_module, "AQICNClient", FakeAQICNClientClass)
-
-    producer = Producer(
-        aqicn_api_token="token",
-        kafka_bootstrap_servers="broker-1:9092,broker-2:9092",
-    )
-
-    assert isinstance(producer.kafka_producer, ProducerSpy)
-    assert captured["bootstrap_servers"] == ["broker-1:9092", "broker-2:9092"]

@@ -27,8 +27,16 @@ def test_main_reads_environment_and_starts_producer(mocker):
         "RETRY_BACKOFF_SECONDS": "9",
     }
     producer_instance = mocker.Mock()
+    aqicn_client = mocker.Mock()
+    kafka_producer = mocker.Mock()
     producer_class = mocker.patch.object(
         run_producer, "Producer", return_value=producer_instance
+    )
+    aqicn_client_class = mocker.patch.object(
+        run_producer, "AQICNClient", return_value=aqicn_client
+    )
+    kafka_producer_class = mocker.patch.object(
+        run_producer, "KafkaProducer", return_value=kafka_producer
     )
     load_dotenv = mocker.patch.object(run_producer, "load_dotenv")
     configure_logging = mocker.patch.object(run_producer, "configure_logging")
@@ -44,16 +52,22 @@ def test_main_reads_environment_and_starts_producer(mocker):
     load_dotenv.assert_called_once_with(dotenv_path=run_producer.DEFAULT_ENV_PATH)
     configure_logging.assert_called_once_with()
     assert get_env_or_default.call_count == 9
-    producer_class.assert_called_once_with(
-        aqicn_api_token="token",
-        city="varna",
-        poll_interval_seconds=120,
-        kafka_bootstrap_servers="broker:9092",
-        kafka_topic="air_quality_varna",
-        aqicn_base_url="https://example.test/feed",
+    aqicn_client_class.assert_called_once_with(
+        api_token="token",
+        base_url="https://example.test/feed",
         request_timeout_seconds=10,
         retry_attempts=7,
         retry_backoff_seconds=9,
+    )
+    kafka_producer_class.assert_called_once_with(
+        bootstrap_servers=["broker:9092"]
+    )
+    producer_class.assert_called_once_with(
+        aqicn_client=aqicn_client,
+        kafka_producer=kafka_producer,
+        city="varna",
+        poll_interval_seconds=120,
+        kafka_topic="air_quality_varna",
     )
     producer_instance.run.assert_called_once_with()
 
@@ -72,8 +86,16 @@ def test_main_uses_defaults_when_producer_env_is_missing_or_blank(mocker):
         "RETRY_BACKOFF_SECONDS": None,
     }
     producer_instance = mocker.Mock()
+    aqicn_client = mocker.Mock()
+    kafka_producer = mocker.Mock()
     producer_class = mocker.patch.object(
         run_producer, "Producer", return_value=producer_instance
+    )
+    aqicn_client_class = mocker.patch.object(
+        run_producer, "AQICNClient", return_value=aqicn_client
+    )
+    kafka_producer_class = mocker.patch.object(
+        run_producer, "KafkaProducer", return_value=kafka_producer
     )
     mocker.patch.object(run_producer, "load_dotenv")
     mocker.patch.object(run_producer, "configure_logging")
@@ -86,15 +108,21 @@ def test_main_uses_defaults_when_producer_env_is_missing_or_blank(mocker):
     result = run_producer.main()
 
     assert result == 0
-    producer_class.assert_called_once_with(
-        aqicn_api_token="",
-        city="sofia",
-        poll_interval_seconds=60,
-        kafka_bootstrap_servers="localhost:9094",
-        kafka_topic="air_quality_sofia",
-        aqicn_base_url="https://api.waqi.info/feed",
+    aqicn_client_class.assert_called_once_with(
+        api_token="",
+        base_url="https://api.waqi.info/feed",
         request_timeout_seconds=30,
         retry_attempts=3,
         retry_backoff_seconds=5,
+    )
+    kafka_producer_class.assert_called_once_with(
+        bootstrap_servers=["localhost:9094"]
+    )
+    producer_class.assert_called_once_with(
+        aqicn_client=aqicn_client,
+        kafka_producer=kafka_producer,
+        city="sofia",
+        poll_interval_seconds=60,
+        kafka_topic="air_quality_sofia",
     )
     producer_instance.run.assert_called_once_with()
