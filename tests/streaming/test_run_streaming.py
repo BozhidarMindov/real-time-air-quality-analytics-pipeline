@@ -20,7 +20,7 @@ def test_main_reads_environment_and_forwards_values(mocker):
     run_streaming = _load_run_streaming_module()
     env_values = {
         "KAFKA_BOOTSTRAP_SERVERS": "broker:9092",
-        "KAFKA_TOPIC": "air_quality_varna",
+        "KAFKA_TOPIC": "ignored_topic",
         "CITY": "varna",
         "OUTPUT_ROOT": "/warehouse/air-quality",
         "PROCESSING_DATE": "2026-04-06",
@@ -52,7 +52,7 @@ def test_main_reads_environment_and_forwards_values(mocker):
 
     assert result == 0
     configure_logging.assert_called_once_with()
-    assert getenv.call_count == 8
+    assert getenv.call_count == 7
     kafka_consumer_class.assert_called_once_with(
         "air_quality_varna",
         bootstrap_servers=["broker:9092"],
@@ -161,7 +161,7 @@ def test_main_raises_when_city_is_missing(mocker, missing_value):
         run_streaming.main()
 
 
-def test_main_builds_default_kafka_topic_from_city_when_topic_is_missing(mocker):
+def test_main_builds_kafka_topic_from_city_when_topic_env_is_missing(mocker):
     run_streaming = _load_run_streaming_module()
     env_values = {
         "KAFKA_BOOTSTRAP_SERVERS": "localhost:9094",
@@ -258,4 +258,23 @@ def test_create_kafka_consumer_retries_when_broker_is_temporarily_unavailable(mo
         "broker-1:9092",
         "broker-2:9092",
     ]
+    sleep.assert_called_once_with(7)
+
+
+def test_wait_for_hdfs_retries_until_namenode_is_available(mocker):
+    run_streaming = _load_run_streaming_module()
+    hdfs_client = mocker.Mock()
+    hdfs_client.exists.side_effect = [RuntimeError("not ready"), True]
+    logger = mocker.Mock()
+    sleep = mocker.Mock()
+
+    run_streaming.wait_for_hdfs(
+        hdfs_client=hdfs_client,
+        logger=logger,
+        retry_attempts=2,
+        retry_backoff_seconds=7,
+        sleep=sleep,
+    )
+
+    assert hdfs_client.exists.call_args_list == [mocker.call("/"), mocker.call("/")]
     sleep.assert_called_once_with(7)

@@ -23,7 +23,7 @@ def test_main_reads_environment_and_starts_producer(mocker):
         "CITY": "varna",
         "POLL_INTERVAL_SECONDS": "120",
         "KAFKA_BOOTSTRAP_SERVERS": "broker:9092",
-        "KAFKA_TOPIC": "air_quality_varna",
+        "KAFKA_TOPIC": "ignored_topic",
         "AQICN_BASE_URL": "https://example.test/feed",
         "REQUEST_TIMEOUT_SECONDS": "10",
         "RETRY_ATTEMPTS": "7",
@@ -54,7 +54,7 @@ def test_main_reads_environment_and_starts_producer(mocker):
     assert result == 0
     load_dotenv.assert_called_once_with(dotenv_path=run_producer.DEFAULT_ENV_PATH)
     configure_logging.assert_called_once_with()
-    assert getenv.call_count == 9
+    assert getenv.call_count == 8
     aqicn_client_class.assert_called_once_with(
         api_token="token",
         base_url="https://example.test/feed",
@@ -181,7 +181,7 @@ def test_main_raises_when_aqicn_api_token_is_missing(mocker, missing_value):
         run_producer.main()
 
 
-def test_main_builds_default_kafka_topic_from_city_when_topic_is_missing(mocker):
+def test_main_builds_kafka_topic_from_city_when_topic_env_is_missing(mocker):
     run_producer = _load_run_producer_module()
     env_values = {
         "AQICN_API_TOKEN": "token",
@@ -213,6 +213,37 @@ def test_main_builds_default_kafka_topic_from_city_when_topic_is_missing(mocker)
     assert result == 0
     run_producer.Producer.assert_called_once()
     assert run_producer.Producer.call_args.kwargs["city"] == "varna"
+    assert run_producer.Producer.call_args.kwargs["kafka_topic"] == "air_quality_varna"
+
+
+def test_main_ignores_kafka_topic_env_and_builds_topic_from_city(mocker):
+    run_producer = _load_run_producer_module()
+    env_values = {
+        "AQICN_API_TOKEN": "token",
+        "CITY": "varna",
+        "POLL_INTERVAL_SECONDS": None,
+        "KAFKA_BOOTSTRAP_SERVERS": "localhost:9094",
+        "KAFKA_TOPIC": "custom_topic",
+        "AQICN_BASE_URL": None,
+        "REQUEST_TIMEOUT_SECONDS": None,
+        "RETRY_ATTEMPTS": None,
+        "RETRY_BACKOFF_SECONDS": None,
+    }
+    producer_instance = mocker.Mock()
+    mocker.patch.object(run_producer, "Producer", return_value=producer_instance)
+    mocker.patch.object(run_producer, "AQICNClient")
+    mocker.patch.object(run_producer, "KafkaProducer")
+    mocker.patch.object(run_producer, "load_dotenv")
+    mocker.patch.object(run_producer, "configure_logging")
+    mocker.patch.object(
+        run_producer.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
+    )
+
+    result = run_producer.main()
+
+    assert result == 0
     assert run_producer.Producer.call_args.kwargs["kafka_topic"] == "air_quality_varna"
 
 

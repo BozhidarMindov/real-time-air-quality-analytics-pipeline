@@ -177,6 +177,51 @@ def test_consumer_commits_offsets_only_after_successful_hdfs_writes(tmp_path):
     assert fake_kafka_consumer.commit_count == 1
 
 
+def test_consumer_commits_offsets_when_cache_persist_fails_after_hdfs_write(
+    tmp_path, mocker
+):
+    polled_records = [
+        {
+            "partition-0": [
+                FakeKafkaRecord(
+                    json.dumps(
+                        {
+                            "data": {
+                                "time": {"iso": "2026-04-07T10:00:00+03:00"},
+                                "idx": 1,
+                            }
+                        }
+                    ).encode("utf-8")
+                )
+            ]
+        }
+    ]
+    fake_kafka_consumer = FakeKafkaConsumer(polled_records=polled_records)
+    fake_hdfs_client = FakeHDFSClient(exists_result=False)
+    logger = mocker.Mock()
+    mocker.patch(
+        "src.streaming.consumer.persist_curated_observation_cache",
+        side_effect=OSError("cache unavailable"),
+    )
+    consumer = Consumer(
+        kafka_consumer=fake_kafka_consumer,
+        hdfs_client=fake_hdfs_client,
+        output_root="/data/air-quality",
+        city="sofia",
+        processing_date="2026-04-06",
+        local_staging_dir=tmp_path,
+        logger=logger,
+    )
+
+    consumer.consume_once()
+
+    assert fake_kafka_consumer.commit_count == 1
+    assert consumer.curated_observation_cache == {"1": "2026-04-07T10:00:00+03:00"}
+    logger.warning.assert_called_once_with(
+        "Could not persist curated observation cache: cache unavailable"
+    )
+
+
 def test_consumer_group_messages_by_day_keeps_curated_projection_when_dedup_fields_are_missing(
     mocker,
 ):

@@ -77,7 +77,7 @@ def main(env_path: str | None = None) -> int:
     kafka_bootstrap_servers = (
         os.getenv("KAFKA_BOOTSTRAP_SERVERS") or DEFAULT_KAFKA_BOOTSTRAP_SERVERS
     )
-    kafka_topic = os.getenv("KAFKA_TOPIC") or get_default_kafka_topic(city)
+    kafka_topic = get_default_kafka_topic(city)
 
     aqicn_client = AQICNClient(
         api_token=api_token,

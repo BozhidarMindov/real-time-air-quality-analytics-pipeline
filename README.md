@@ -38,7 +38,7 @@
 ## How It Works
 
 1. The `ingestion-producer` fetches air quality snapshots for the configured city from the AQICN API.
-2. Each source payload is published to a city-specific Kafka topic. For example, `CITY=sofia` uses `air_quality_sofia` unless `KAFKA_TOPIC` is set.
+2. Each source payload is published to the city-specific Kafka topic derived from `CITY`. For example, `CITY=sofia` uses `air_quality_sofia`.
 3. The `streaming-consumer` reads Kafka batches, groups records by day, and writes:
    - raw payloads to HDFS
    - curated, deduplicated observations to HDFS
@@ -97,24 +97,23 @@ git clone https://github.com/BozhidarMindov/real-time-air-quality-analytics-pipe
 
 ### Environment Variables (`.env`)
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root. Docker Compose reads this file and passes only the needed values to each service.
 
 ```dotenv
 AQICN_API_TOKEN=<your_token> # Required
 CITY=sofia # Required
-KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092 # Optional (default=localhost:9094)
 POLL_INTERVAL_SECONDS=60 # Optional (default=60)
-KAFKA_TOPIC=air_quality_sofia # Optional (default=air_quality_<CITY>)
 ```
 
-Optional runtime overrides used by the pipeline:
+`CITY` is the active AQICN city feed. The Kafka topic and HDFS paths are derived from it:
 
-```dotenv
-OUTPUT_ROOT=/data/air-quality
-HDFS_NAMENODE_URL=http://namenode:9870
-HDFS_USER=root
-LOCAL_STAGING_DIR=/tmp/air-quality
+```text
+CITY=sofia
+Kafka topic: air_quality_sofia
+HDFS path: /data/air-quality/sofia/
 ```
+
+Internal service settings such as `KAFKA_BOOTSTRAP_SERVERS`, `OUTPUT_ROOT`, `HDFS_NAMENODE_URL`, `HDFS_USER`, and `LOCAL_STAGING_DIR` are set in `docker-compose.yaml`.
 
 ### Docker Setup
 
@@ -151,8 +150,8 @@ LOCAL_STAGING_DIR=/tmp/air-quality
 
 - The pipeline is city-configurable through the required `CITY` environment variable; Sofia is only an example city.
 - The producer requires `AQICN_API_TOKEN` and `CITY`; the streaming consumer and analytics job require `CITY`.
-- `KAFKA_BOOTSTRAP_SERVERS` is optional. When it is not set, the producer and consumer use `localhost:9094`.
-- `KAFKA_TOPIC` is optional. When it is not set, the producer and consumer use `air_quality_<CITY>`.
+- Docker Compose is the intended runtime. It sets container-only service addresses such as `kafka-broker:9092` and `http://namenode:9870`.
+- The Kafka topic is always derived from `CITY` as `air_quality_<CITY>`.
 - Raw and curated datasets are written to HDFS under `/data/air-quality/<city>/`.
 - The analytics notebook container is intended for interactive Spark exploration on top of the curated dataset.
 - This project was completed as part of the **Big Data Engineering course** in the **Big Data Technologies** master's program at **Sofia University**.

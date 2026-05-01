@@ -80,9 +80,10 @@ services:
       dockerfile: src/ingestion/Dockerfile
     depends_on:
       - kafka-broker
-    env_file:
-      - .env
     environment:
+      AQICN_API_TOKEN: ${AQICN_API_TOKEN:?AQICN_API_TOKEN is required}
+      CITY: ${CITY:?CITY is required}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-60}
       KAFKA_BOOTSTRAP_SERVERS: kafka-broker:9092
 
   streaming-consumer:
@@ -94,9 +95,8 @@ services:
       - namenode
       - datanode1
       - datanode2
-    env_file:
-      - .env
     environment:
+      CITY: ${CITY:?CITY is required}
       KAFKA_BOOTSTRAP_SERVERS: kafka-broker:9092
       OUTPUT_ROOT: /data/air-quality
       HDFS_NAMENODE_URL: http://namenode:9870
@@ -113,9 +113,8 @@ services:
       - namenode
       - datanode1
       - datanode2
-    env_file:
-      - .env
     environment:
+      CITY: ${CITY:?CITY is required}
       OUTPUT_ROOT: /data/air-quality
     ports:
       - "8888:8888"

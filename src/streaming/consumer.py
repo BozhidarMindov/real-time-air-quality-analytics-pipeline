@@ -198,7 +198,12 @@ class Consumer:
                 filtered_curated_records,
             )
             self.curated_observation_cache = updated_cache
-            persist_curated_observation_cache(
-                self.curated_observation_cache_path,
-                self.curated_observation_cache,
-            )
+            try:
+                persist_curated_observation_cache(
+                    self.curated_observation_cache_path,
+                    self.curated_observation_cache,
+                )
+            except OSError as exc:
+                self.logger.warning(
+                    f"Could not persist curated observation cache: {exc}"
+                )
