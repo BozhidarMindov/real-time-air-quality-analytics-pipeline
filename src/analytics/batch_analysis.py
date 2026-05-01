@@ -20,7 +20,6 @@ from src.analytics.metrics import compute_weather_correlations
 
 
 DEFAULT_HDFS_ROOT = "/data/air-quality"
-DEFAULT_CITY = "sofia"
 
 CURATED_SCHEMA = StructType(
     [

@@ -1,12 +1,12 @@
 # Real-Time Air Quality Analytics Pipeline
 
-### A Dockerized data pipeline for collecting, curating, and analyzing Sofia air quality data
+### A Dockerized data pipeline for collecting, curating, and analyzing air quality data for AQICN-supported cities worldwide
 
 ---
 
 ## Features
 
-- Fetches live air quality data for `sofia` from the **[AQICN API](https://aqicn.org/api/)**
+- Fetches live air quality data for a configurable `CITY` from the **[AQICN API](https://aqicn.org/api/)**
 - Publishes raw observations to **Kafka** with a dedicated ingestion producer
 - Consumes **Kafka** messages and stores both raw and curated daily JSONL datasets in **HDFS**
 - Deduplicates curated station observations before persisting them
@@ -37,8 +37,8 @@
 
 ## How It Works
 
-1. The `ingestion-producer` fetches Sofia air quality snapshots from the AQICN API.
-2. Each source payload is published to the Kafka topic `air_quality_sofia`.
+1. The `ingestion-producer` fetches air quality snapshots for the configured city from the AQICN API.
+2. Each source payload is published to a city-specific Kafka topic. For example, `CITY=sofia` uses `air_quality_sofia` unless `KAFKA_TOPIC` is set.
 3. The `streaming-consumer` reads Kafka batches, groups records by day, and writes:
    - raw payloads to HDFS
    - curated, deduplicated observations to HDFS
@@ -54,15 +54,15 @@ AQICN API
 ingestion-producer
    |
    v
-Kafka topic: air_quality_sofia
+Kafka topic: air_quality_<city>
    |
    v
 streaming-consumer
    |
    v
 HDFS
-  |- /data/air-quality/sofia/raw/*.jsonl
-  |- /data/air-quality/sofia/curated/*.jsonl
+  |- /data/air-quality/<city>/raw/*.jsonl
+  |- /data/air-quality/<city>/curated/*.jsonl
    |
    v
 analytics-notebook (Spark + Jupyter)
@@ -101,15 +101,15 @@ Create a `.env` file in the project root:
 
 ```dotenv
 AQICN_API_TOKEN=<your_token> # Required
-CITY=sofia # Optional (default=sofia)
-POLL_INTERVAL_SECONDS=60 # Optional
-KAFKA_TOPIC=air_quality_sofia # Optional
+CITY=sofia # Required
+KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092 # Optional (default=localhost:9094)
+POLL_INTERVAL_SECONDS=60 # Optional (default=60)
+KAFKA_TOPIC=air_quality_sofia # Optional (default=air_quality_<CITY>)
 ```
 
 Optional runtime overrides used by the pipeline:
 
 ```dotenv
-KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
 OUTPUT_ROOT=/data/air-quality
 HDFS_NAMENODE_URL=http://namenode:9870
 HDFS_USER=root
@@ -149,7 +149,10 @@ LOCAL_STAGING_DIR=/tmp/air-quality
 
 ## Notes
 
-- The pipeline is currently configured around the `sofia` city feed by default.
+- The pipeline is city-configurable through the required `CITY` environment variable; Sofia is only an example city.
+- The producer requires `AQICN_API_TOKEN` and `CITY`; the streaming consumer and analytics job require `CITY`.
+- `KAFKA_BOOTSTRAP_SERVERS` is optional. When it is not set, the producer and consumer use `localhost:9094`.
+- `KAFKA_TOPIC` is optional. When it is not set, the producer and consumer use `air_quality_<CITY>`.
 - Raw and curated datasets are written to HDFS under `/data/air-quality/<city>/`.
 - The analytics notebook container is intended for interactive Spark exploration on top of the curated dataset.
 - This project was completed as part of the **Big Data Engineering course** in the **Big Data Technologies** master's program at **Sofia University**.

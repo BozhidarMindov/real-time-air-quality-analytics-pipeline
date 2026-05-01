@@ -84,7 +84,6 @@ services:
       - .env
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka-broker:9092
-    restart: on-failure
 
   streaming-consumer:
     build:
@@ -105,7 +104,6 @@ services:
       LOCAL_STAGING_DIR: /tmp/air-quality
     volumes:
       - ./src/streaming:/app/src/streaming:ro
-    restart: on-failure
 
   analytics-notebook:
     build:
@@ -115,8 +113,9 @@ services:
       - namenode
       - datanode1
       - datanode2
+    env_file:
+      - .env
     environment:
-      CITY: sofia
       OUTPUT_ROOT: /data/air-quality
     ports:
       - "8888:8888"

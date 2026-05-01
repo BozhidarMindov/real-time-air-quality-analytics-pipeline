@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 from src.analytics import batch_analysis
 
 
@@ -115,3 +117,24 @@ def test_main_reads_environment_and_calls_run_batch_analysis(mocker):
         city="sofia",
     )
     spark_session.stop.assert_called_once_with()
+
+
+@pytest.mark.parametrize("missing_value", [None, ""])
+def test_main_raises_when_city_is_missing(mocker, missing_value):
+    run_analytics = _load_run_analytics_module()
+    mocker.patch.object(run_analytics, "configure_logging")
+    create_spark_session = mocker.patch.object(run_analytics, "create_spark_session")
+    env_values = {
+        "CITY": missing_value,
+        "OUTPUT_ROOT": "/data/air-quality",
+    }
+    mocker.patch.object(
+        run_analytics.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
+    )
+
+    with pytest.raises(ValueError, match="CITY is required"):
+        run_analytics.main()
+
+    create_spark_session.assert_not_called()

@@ -1,6 +1,9 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+from kafka.errors import NoBrokersAvailable
+
 
 def _load_run_producer_module():
     module_path = Path(__file__).resolve().parents[2] / "scripts" / "run_producer.py"
@@ -70,11 +73,13 @@ def test_main_reads_environment_and_starts_producer(mocker):
     producer_instance.run.assert_called_once_with()
 
 
-def test_main_uses_defaults_when_producer_env_is_missing_or_blank(mocker):
+def test_main_uses_non_required_defaults_when_optional_producer_env_is_missing_or_blank(
+    mocker,
+):
     run_producer = _load_run_producer_module()
     env_values = {
-        "AQICN_API_TOKEN": "",
-        "CITY": None,
+        "AQICN_API_TOKEN": "token",
+        "CITY": "sofia",
         "POLL_INTERVAL_SECONDS": None,
         "KAFKA_BOOTSTRAP_SERVERS": "",
         "KAFKA_TOPIC": "",
@@ -107,7 +112,7 @@ def test_main_uses_defaults_when_producer_env_is_missing_or_blank(mocker):
 
     assert result == 0
     aqicn_client_class.assert_called_once_with(
-        api_token="",
+        api_token="token",
         base_url="https://api.waqi.info/feed",
         request_timeout_seconds=30,
         retry_attempts=3,
@@ -122,3 +127,157 @@ def test_main_uses_defaults_when_producer_env_is_missing_or_blank(mocker):
         kafka_topic="air_quality_sofia",
     )
     producer_instance.run.assert_called_once_with()
+
+
+@pytest.mark.parametrize("missing_value", [None, ""])
+def test_main_raises_when_city_is_missing(mocker, missing_value):
+    run_producer = _load_run_producer_module()
+    env_values = {
+        "AQICN_API_TOKEN": "token",
+        "CITY": missing_value,
+        "POLL_INTERVAL_SECONDS": None,
+        "KAFKA_BOOTSTRAP_SERVERS": None,
+        "KAFKA_TOPIC": None,
+        "AQICN_BASE_URL": None,
+        "REQUEST_TIMEOUT_SECONDS": None,
+        "RETRY_ATTEMPTS": None,
+        "RETRY_BACKOFF_SECONDS": None,
+    }
+    mocker.patch.object(run_producer, "load_dotenv")
+    mocker.patch.object(run_producer, "configure_logging")
+    mocker.patch.object(
+        run_producer.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
+    )
+
+    with pytest.raises(ValueError, match="CITY is required"):
+        run_producer.main()
+
+
+@pytest.mark.parametrize("missing_value", [None, ""])
+def test_main_raises_when_aqicn_api_token_is_missing(mocker, missing_value):
+    run_producer = _load_run_producer_module()
+    env_values = {
+        "AQICN_API_TOKEN": missing_value,
+        "CITY": "sofia",
+        "POLL_INTERVAL_SECONDS": None,
+        "KAFKA_BOOTSTRAP_SERVERS": None,
+        "KAFKA_TOPIC": None,
+        "AQICN_BASE_URL": None,
+        "REQUEST_TIMEOUT_SECONDS": None,
+        "RETRY_ATTEMPTS": None,
+        "RETRY_BACKOFF_SECONDS": None,
+    }
+    mocker.patch.object(run_producer, "load_dotenv")
+    mocker.patch.object(run_producer, "configure_logging")
+    mocker.patch.object(
+        run_producer.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
+    )
+
+    with pytest.raises(ValueError, match="AQICN_API_TOKEN is required"):
+        run_producer.main()
+
+
+def test_main_builds_default_kafka_topic_from_city_when_topic_is_missing(mocker):
+    run_producer = _load_run_producer_module()
+    env_values = {
+        "AQICN_API_TOKEN": "token",
+        "CITY": "varna",
+        "POLL_INTERVAL_SECONDS": None,
+        "KAFKA_BOOTSTRAP_SERVERS": "localhost:9094",
+        "KAFKA_TOPIC": "",
+        "AQICN_BASE_URL": None,
+        "REQUEST_TIMEOUT_SECONDS": None,
+        "RETRY_ATTEMPTS": None,
+        "RETRY_BACKOFF_SECONDS": None,
+    }
+    producer_instance = mocker.Mock()
+    mocker.patch.object(
+        run_producer, "Producer", return_value=producer_instance
+    )
+    mocker.patch.object(run_producer, "AQICNClient")
+    mocker.patch.object(run_producer, "KafkaProducer")
+    mocker.patch.object(run_producer, "load_dotenv")
+    mocker.patch.object(run_producer, "configure_logging")
+    mocker.patch.object(
+        run_producer.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
+    )
+
+    result = run_producer.main()
+
+    assert result == 0
+    run_producer.Producer.assert_called_once()
+    assert run_producer.Producer.call_args.kwargs["city"] == "varna"
+    assert run_producer.Producer.call_args.kwargs["kafka_topic"] == "air_quality_varna"
+
+
+@pytest.mark.parametrize("missing_value", [None, ""])
+def test_main_uses_default_kafka_bootstrap_servers_when_env_is_missing(
+    mocker, missing_value
+):
+    run_producer = _load_run_producer_module()
+    env_values = {
+        "AQICN_API_TOKEN": "token",
+        "CITY": "sofia",
+        "POLL_INTERVAL_SECONDS": None,
+        "KAFKA_BOOTSTRAP_SERVERS": missing_value,
+        "KAFKA_TOPIC": None,
+        "AQICN_BASE_URL": None,
+        "REQUEST_TIMEOUT_SECONDS": None,
+        "RETRY_ATTEMPTS": None,
+        "RETRY_BACKOFF_SECONDS": None,
+    }
+    producer_instance = mocker.Mock()
+    mocker.patch.object(run_producer, "Producer", return_value=producer_instance)
+    mocker.patch.object(run_producer, "AQICNClient")
+    kafka_producer_class = mocker.patch.object(
+        run_producer, "KafkaProducer", return_value=mocker.Mock()
+    )
+    mocker.patch.object(run_producer, "load_dotenv")
+    mocker.patch.object(run_producer, "configure_logging")
+    mocker.patch.object(run_producer.logging, "getLogger", return_value=mocker.Mock())
+    mocker.patch.object(
+        run_producer.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
+    )
+
+    result = run_producer.main()
+
+    assert result == 0
+    kafka_producer_class.assert_called_once_with(
+        bootstrap_servers=[run_producer.DEFAULT_KAFKA_BOOTSTRAP_SERVERS]
+    )
+
+
+def test_create_kafka_producer_retries_when_broker_is_temporarily_unavailable(mocker):
+    run_producer = _load_run_producer_module()
+    logger = mocker.Mock()
+    kafka_producer = mocker.Mock()
+    sleep = mocker.Mock()
+    kafka_producer_class = mocker.patch.object(
+        run_producer,
+        "KafkaProducer",
+        side_effect=[NoBrokersAvailable(), kafka_producer],
+    )
+
+    result = run_producer.create_kafka_producer(
+        kafka_bootstrap_servers="broker-1:9092,broker-2:9092",
+        logger=logger,
+        retry_attempts=2,
+        retry_backoff_seconds=7,
+        sleep=sleep,
+    )
+
+    assert result is kafka_producer
+    assert kafka_producer_class.call_count == 2
+    assert kafka_producer_class.call_args.kwargs["bootstrap_servers"] == [
+        "broker-1:9092",
+        "broker-2:9092",
+    ]
+    sleep.assert_called_once_with(7)

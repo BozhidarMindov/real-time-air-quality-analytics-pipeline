@@ -7,6 +7,8 @@ from pathlib import Path
 from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
 
+from src.common.config import get_default_kafka_topic
+from src.common.config import get_required_env
 from src.common.logging import configure_logging
 from src.streaming.consumer import Consumer
 from src.streaming.hdfs_client import DEFAULT_HDFS_NAMENODE_URL
@@ -14,9 +16,7 @@ from src.streaming.hdfs_client import DEFAULT_HDFS_USER
 from src.streaming.hdfs_client import HDFSClient
 
 
-DEFAULT_BOOTSTRAP_SERVERS = "localhost:9094"
-DEFAULT_KAFKA_TOPIC = "air_quality_sofia"
-DEFAULT_CITY = "sofia"
+DEFAULT_KAFKA_BOOTSTRAP_SERVERS = "localhost:9094"
 DEFAULT_OUTPUT_ROOT = "/data/air-quality"
 DEFAULT_LOCAL_STAGING_DIR = str(Path(tempfile.gettempdir()) / "air-quality")
 DEFAULT_CONSUMER_GROUP = "air-quality-streaming"
@@ -56,8 +56,6 @@ def create_kafka_consumer(
         for server in kafka_bootstrap_servers.split(",")
         if server.strip()
     ]
-    last_error = None
-
     for attempt in range(1, retry_attempts + 1):
         try:
             return KafkaConsumer(
@@ -68,18 +66,14 @@ def create_kafka_consumer(
                 enable_auto_commit=False,
                 value_deserializer=IDENTITY_DESERIALIZER,
             )
-        except NoBrokersAvailable as exc:
-            last_error = exc
+        except NoBrokersAvailable:
             if attempt >= retry_attempts:
-                break
+                raise
             logger.warning(
                 f"Kafka broker not available on attempt {attempt}/{retry_attempts}; "
                 f"retrying in {retry_backoff_seconds} seconds"
             )
             sleep(retry_backoff_seconds)
-
-    assert last_error is not None
-    raise last_error
 
 
 def main() -> int:
@@ -90,11 +84,11 @@ def main() -> int:
     """
     configure_logging()
     logger = logging.getLogger("air_quality.streaming")
+    city = get_required_env("CITY")
     kafka_bootstrap_servers = (
-        os.getenv("KAFKA_BOOTSTRAP_SERVERS") or DEFAULT_BOOTSTRAP_SERVERS
+        os.getenv("KAFKA_BOOTSTRAP_SERVERS") or DEFAULT_KAFKA_BOOTSTRAP_SERVERS
     )
-    kafka_topic = os.getenv("KAFKA_TOPIC") or DEFAULT_KAFKA_TOPIC
-    city = os.getenv("CITY") or DEFAULT_CITY
+    kafka_topic = os.getenv("KAFKA_TOPIC") or get_default_kafka_topic(city)
     output_root = os.getenv("OUTPUT_ROOT") or DEFAULT_OUTPUT_ROOT
     processing_date = os.getenv("PROCESSING_DATE") or None
     hdfs_namenode_url = os.getenv("HDFS_NAMENODE_URL") or DEFAULT_HDFS_NAMENODE_URL

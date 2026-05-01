@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
 from kafka.errors import NoBrokersAvailable
 
 
@@ -75,12 +76,14 @@ def test_main_reads_environment_and_forwards_values(mocker):
     consumer_instance.run.assert_called_once_with()
 
 
-def test_main_uses_streaming_defaults_when_env_is_missing_or_blank(mocker):
+def test_main_uses_non_required_streaming_defaults_when_optional_env_is_missing_or_blank(
+    mocker,
+):
     run_streaming = _load_run_streaming_module()
     env_values = {
         "KAFKA_BOOTSTRAP_SERVERS": "",
         "KAFKA_TOPIC": None,
-        "CITY": None,
+        "CITY": "sofia",
         "OUTPUT_ROOT": "",
         "PROCESSING_DATE": "",
         "HDFS_NAMENODE_URL": "",
@@ -111,7 +114,7 @@ def test_main_uses_streaming_defaults_when_env_is_missing_or_blank(mocker):
 
     assert result == 0
     kafka_consumer_class.assert_called_once_with(
-        run_streaming.DEFAULT_KAFKA_TOPIC,
+        "air_quality_sofia",
         bootstrap_servers=["localhost:9094"],
         group_id=run_streaming.DEFAULT_CONSUMER_GROUP,
         auto_offset_reset="latest",
@@ -131,6 +134,102 @@ def test_main_uses_streaming_defaults_when_env_is_missing_or_blank(mocker):
         local_staging_dir=run_streaming.DEFAULT_LOCAL_STAGING_DIR,
     )
     consumer_instance.run.assert_called_once_with()
+
+
+@pytest.mark.parametrize("missing_value", [None, ""])
+def test_main_raises_when_city_is_missing(mocker, missing_value):
+    run_streaming = _load_run_streaming_module()
+    env_values = {
+        "KAFKA_BOOTSTRAP_SERVERS": None,
+        "KAFKA_TOPIC": None,
+        "CITY": missing_value,
+        "OUTPUT_ROOT": None,
+        "PROCESSING_DATE": None,
+        "HDFS_NAMENODE_URL": None,
+        "HDFS_USER": None,
+        "LOCAL_STAGING_DIR": None,
+    }
+    mocker.patch.object(run_streaming, "configure_logging")
+    mocker.patch.object(run_streaming.logging, "getLogger", return_value=mocker.Mock())
+    mocker.patch.object(
+        run_streaming.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
+    )
+
+    with pytest.raises(ValueError, match="CITY is required"):
+        run_streaming.main()
+
+
+def test_main_builds_default_kafka_topic_from_city_when_topic_is_missing(mocker):
+    run_streaming = _load_run_streaming_module()
+    env_values = {
+        "KAFKA_BOOTSTRAP_SERVERS": "localhost:9094",
+        "KAFKA_TOPIC": "",
+        "CITY": "varna",
+        "OUTPUT_ROOT": None,
+        "PROCESSING_DATE": None,
+        "HDFS_NAMENODE_URL": None,
+        "HDFS_USER": None,
+        "LOCAL_STAGING_DIR": None,
+    }
+    consumer_instance = mocker.Mock()
+    mocker.patch.object(run_streaming, "Consumer", return_value=consumer_instance)
+    kafka_consumer_class = mocker.patch.object(
+        run_streaming, "KafkaConsumer", return_value=mocker.Mock()
+    )
+    mocker.patch.object(run_streaming, "HDFSClient", return_value=mocker.Mock())
+    mocker.patch.object(run_streaming, "configure_logging")
+    mocker.patch.object(run_streaming.logging, "getLogger", return_value=mocker.Mock())
+    mocker.patch.object(
+        run_streaming.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
+    )
+
+    result = run_streaming.main()
+
+    assert result == 0
+    assert kafka_consumer_class.call_args.args[0] == "air_quality_varna"
+    assert run_streaming.Consumer.call_args.kwargs["city"] == "varna"
+
+
+@pytest.mark.parametrize("missing_value", [None, ""])
+def test_main_uses_default_kafka_bootstrap_servers_when_env_is_missing(
+    mocker, missing_value
+):
+    run_streaming = _load_run_streaming_module()
+    env_values = {
+        "KAFKA_BOOTSTRAP_SERVERS": missing_value,
+        "KAFKA_TOPIC": None,
+        "CITY": "sofia",
+        "OUTPUT_ROOT": None,
+        "PROCESSING_DATE": None,
+        "HDFS_NAMENODE_URL": None,
+        "HDFS_USER": None,
+        "LOCAL_STAGING_DIR": None,
+    }
+    consumer_instance = mocker.Mock()
+    kafka_consumer_class = mocker.patch.object(
+        run_streaming, "KafkaConsumer", return_value=mocker.Mock()
+    )
+    mocker.patch.object(run_streaming, "Consumer", return_value=consumer_instance)
+    mocker.patch.object(run_streaming, "HDFSClient", return_value=mocker.Mock())
+    mocker.patch.object(run_streaming, "configure_logging")
+    mocker.patch.object(run_streaming.logging, "getLogger", return_value=mocker.Mock())
+    mocker.patch.object(
+        run_streaming.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
+    )
+
+    result = run_streaming.main()
+
+    assert result == 0
+    kafka_consumer_class.assert_called_once()
+    assert kafka_consumer_class.call_args.kwargs["bootstrap_servers"] == [
+        run_streaming.DEFAULT_KAFKA_BOOTSTRAP_SERVERS
+    ]
 
 
 def test_create_kafka_consumer_retries_when_broker_is_temporarily_unavailable(mocker):
