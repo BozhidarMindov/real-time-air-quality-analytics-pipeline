@@ -191,9 +191,7 @@ def test_main_builds_kafka_topic_from_city_when_topic_env_is_missing(mocker):
         "RETRY_BACKOFF_SECONDS": None,
     }
     producer_instance = mocker.Mock()
-    mocker.patch.object(
-        run_producer, "Producer", return_value=producer_instance
-    )
+    mocker.patch.object(run_producer, "Producer", return_value=producer_instance)
     mocker.patch.object(run_producer, "AQICNClient")
     mocker.patch.object(run_producer, "KafkaProducer")
     mocker.patch.object(run_producer, "load_dotenv")

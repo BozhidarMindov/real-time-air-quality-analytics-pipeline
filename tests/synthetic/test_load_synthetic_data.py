@@ -6,7 +6,9 @@ from pathlib import Path
 
 
 def _load_module():
-    module_path = Path(__file__).resolve().parents[2] / "scripts" / "load_synthetic_data.py"
+    module_path = (
+        Path(__file__).resolve().parents[2] / "scripts" / "load_synthetic_data.py"
+    )
     spec = importlib.util.spec_from_file_location(
         "load_synthetic_data_test_module", module_path
     )
