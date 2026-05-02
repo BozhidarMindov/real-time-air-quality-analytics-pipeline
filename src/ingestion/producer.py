@@ -6,7 +6,7 @@ from src.ingestion.aqicn_client import AQICNClient
 
 from kafka import KafkaProducer
 
-DEFAULT_POLL_INTERVAL_SECONDS = 60
+DEFAULT_POLL_INTERVAL_SECONDS = 300
 
 
 class Producer:

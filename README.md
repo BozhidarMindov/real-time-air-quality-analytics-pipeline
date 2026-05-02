@@ -103,7 +103,7 @@ Create a `.env` file in the project root. Docker Compose reads this file and pas
 ```dotenv
 AQICN_API_TOKEN=<your_token> # Required
 CITY=sofia # Required
-POLL_INTERVAL_SECONDS=60 # Optional (default=60)
+POLL_INTERVAL_SECONDS=300 # Optional (default=300; 5 minutes)
 ```
 
 `CITY` is the active AQICN city feed. The Kafka topic and HDFS paths are derived from it:

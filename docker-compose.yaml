@@ -83,7 +83,7 @@ services:
     environment:
       AQICN_API_TOKEN: ${AQICN_API_TOKEN:?AQICN_API_TOKEN is required}
       CITY: ${CITY:?CITY is required}
-      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-60}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-300}
       KAFKA_BOOTSTRAP_SERVERS: kafka-broker:9092
 
   streaming-consumer:

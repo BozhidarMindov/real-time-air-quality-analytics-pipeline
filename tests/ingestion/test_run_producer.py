@@ -123,7 +123,7 @@ def test_main_uses_non_required_defaults_when_optional_producer_env_is_missing_o
         aqicn_client=aqicn_client,
         kafka_producer=kafka_producer,
         city="sofia",
-        poll_interval_seconds=60,
+        poll_interval_seconds=300,
         kafka_topic="air_quality_sofia",
     )
     producer_instance.run.assert_called_once_with()

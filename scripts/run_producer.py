@@ -11,6 +11,7 @@ from src.common.config import get_default_kafka_topic
 from src.common.config import get_required_env
 from src.common.logging import configure_logging
 from src.ingestion.aqicn_client import AQICNClient
+from src.ingestion.producer import DEFAULT_POLL_INTERVAL_SECONDS
 from src.ingestion.producer import Producer
 
 
@@ -96,7 +97,9 @@ def main(env_path: str | None = None) -> int:
         kafka_producer=kafka_producer,
         city=city,
         kafka_topic=kafka_topic,
-        poll_interval_seconds=int(os.getenv("POLL_INTERVAL_SECONDS") or "60"),
+        poll_interval_seconds=int(
+            os.getenv("POLL_INTERVAL_SECONDS") or str(DEFAULT_POLL_INTERVAL_SECONDS)
+        ),
     )
     producer.run()
     return 0
