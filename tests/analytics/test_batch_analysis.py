@@ -7,6 +7,64 @@ def test_build_curated_input_path_uses_city_jsonl_glob():
     assert result == "hdfs://namenode:9000/data/air-quality/sofia/curated/*.jsonl"
 
 
+def test_run_batch_analysis_returns_expected_summary_keys(spark_session, mocker):
+    source = spark_session.createDataFrame(
+        [
+            {
+                "timestamp": "2026-04-07T10:00:00+03:00",
+                "station_id": 1,
+                "station_name": "Sofia",
+                "latitude": 42.6977,
+                "longitude": 23.3219,
+                "aqi": 40,
+                "dominant_pollutant": "pm10",
+                "pm10": 20.0,
+                "no2": 10.0,
+                "o3": 15.0,
+                "temperature": 18.0,
+                "humidity": 50.0,
+                "wind": 2.0,
+                "pressure": 1008.0,
+                "dew": 7.0,
+            },
+            {
+                "timestamp": "2026-04-07T11:00:00+03:00",
+                "station_id": 1,
+                "station_name": "Sofia",
+                "latitude": 42.6977,
+                "longitude": 23.3219,
+                "aqi": 95,
+                "dominant_pollutant": "pm10",
+                "pm10": 35.0,
+                "no2": 12.0,
+                "o3": 18.0,
+                "temperature": 19.0,
+                "humidity": 48.0,
+                "wind": 2.5,
+                "pressure": 1007.0,
+                "dew": 8.0,
+            },
+        ]
+    )
+    mocker.patch.object(batch_analysis, "load_curated_dataframe", return_value=source)
+
+    result = batch_analysis.run_batch_analysis(
+        spark_session,
+        "/data/air-quality",
+        "sofia",
+    )
+
+    assert set(result) == {
+        "normalized",
+        "hourly_aqi",
+        "daily_aqi",
+        "aqi_category_distribution",
+        "average_pollutants",
+        "dominant_pollutants",
+        "weather_correlations",
+    }
+
+
 def test_normalize_curated_dataframe_adds_hour_and_day_columns(spark_session):
     source = spark_session.createDataFrame(
         [

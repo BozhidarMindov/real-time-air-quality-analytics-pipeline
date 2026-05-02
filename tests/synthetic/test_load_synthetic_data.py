@@ -21,7 +21,6 @@ def test_main_publishes_synthetic_payloads_to_city_topic(mocker):
     env_values = {
         "CITY": "varna",
         "KAFKA_BOOTSTRAP_SERVERS": "broker:9092",
-        "KAFKA_TOPIC": "ignored",
         "SYNTHETIC_DAYS": "1",
         "SYNTHETIC_INTERVAL_MINUTES": "60",
         "SYNTHETIC_STATION_COUNT": "2",

@@ -1,5 +1,6 @@
 import pytest
 
+from src.common.config import DEFAULT_KAFKA_BOOTSTRAP_SERVERS
 from src.common.config import get_default_kafka_topic
 from src.common.config import get_required_env
 
@@ -27,3 +28,7 @@ def test_get_default_kafka_topic_uses_city_name():
     result = get_default_kafka_topic("varna")
 
     assert result == "air_quality_varna"
+
+
+def test_default_kafka_bootstrap_servers_uses_localhost_listener():
+    assert DEFAULT_KAFKA_BOOTSTRAP_SERVERS == "localhost:9094"

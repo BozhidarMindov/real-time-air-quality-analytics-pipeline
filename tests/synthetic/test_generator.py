@@ -7,7 +7,7 @@ from src.synthetic.generator import load_example_payload
 
 
 def test_load_example_payload_reads_first_raw_jsonl_record():
-    payload = load_example_payload("src/synthetic/examples/raw/2026-04-12.jsonl")
+    payload = load_example_payload()
 
     assert payload["status"] == "ok"
     assert payload["data"]["idx"] == 8088

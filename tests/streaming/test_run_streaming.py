@@ -20,7 +20,6 @@ def test_main_reads_environment_and_forwards_values(mocker):
     run_streaming = _load_run_streaming_module()
     env_values = {
         "KAFKA_BOOTSTRAP_SERVERS": "broker:9092",
-        "KAFKA_TOPIC": "ignored_topic",
         "CITY": "varna",
         "OUTPUT_ROOT": "/warehouse/air-quality",
         "PROCESSING_DATE": "2026-04-06",
@@ -81,7 +80,6 @@ def test_main_uses_non_required_streaming_defaults_when_optional_env_is_missing_
     run_streaming = _load_run_streaming_module()
     env_values = {
         "KAFKA_BOOTSTRAP_SERVERS": "",
-        "KAFKA_TOPIC": None,
         "CITY": "sofia",
         "OUTPUT_ROOT": "",
         "PROCESSING_DATE": "",
@@ -139,7 +137,6 @@ def test_main_raises_when_city_is_missing(mocker, missing_value):
     run_streaming = _load_run_streaming_module()
     env_values = {
         "KAFKA_BOOTSTRAP_SERVERS": None,
-        "KAFKA_TOPIC": None,
         "CITY": missing_value,
         "OUTPUT_ROOT": None,
         "PROCESSING_DATE": None,
@@ -199,7 +196,6 @@ def test_main_uses_default_kafka_bootstrap_servers_when_env_is_missing(
     run_streaming = _load_run_streaming_module()
     env_values = {
         "KAFKA_BOOTSTRAP_SERVERS": missing_value,
-        "KAFKA_TOPIC": None,
         "CITY": "sofia",
         "OUTPUT_ROOT": None,
         "PROCESSING_DATE": None,
