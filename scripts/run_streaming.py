@@ -24,7 +24,6 @@ DEFAULT_KAFKA_CONNECT_RETRY_ATTEMPTS = 6
 DEFAULT_KAFKA_CONNECT_RETRY_BACKOFF_SECONDS = 5
 DEFAULT_HDFS_CONNECT_RETRY_ATTEMPTS = 6
 DEFAULT_HDFS_CONNECT_RETRY_BACKOFF_SECONDS = 5
-IDENTITY_DESERIALIZER = lambda value: value
 
 
 def create_kafka_consumer(
@@ -66,7 +65,6 @@ def create_kafka_consumer(
                 group_id=consumer_group,
                 auto_offset_reset="latest",
                 enable_auto_commit=False,
-                value_deserializer=IDENTITY_DESERIALIZER,
             )
         except NoBrokersAvailable:
             if attempt >= retry_attempts:

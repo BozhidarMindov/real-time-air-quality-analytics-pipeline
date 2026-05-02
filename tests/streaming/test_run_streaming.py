@@ -59,7 +59,6 @@ def test_main_reads_environment_and_forwards_values(mocker):
         group_id=run_streaming.DEFAULT_CONSUMER_GROUP,
         auto_offset_reset="latest",
         enable_auto_commit=False,
-        value_deserializer=run_streaming.IDENTITY_DESERIALIZER,
     )
     hdfs_client_class.assert_called_once_with(
         namenode_url="http://namenode:9870",
@@ -119,7 +118,6 @@ def test_main_uses_non_required_streaming_defaults_when_optional_env_is_missing_
         group_id=run_streaming.DEFAULT_CONSUMER_GROUP,
         auto_offset_reset="latest",
         enable_auto_commit=False,
-        value_deserializer=run_streaming.IDENTITY_DESERIALIZER,
     )
     hdfs_client_class.assert_called_once_with(
         namenode_url=run_streaming.DEFAULT_HDFS_NAMENODE_URL,
