@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 
+from src.common.config import DEFAULT_KAFKA_BOOTSTRAP_SERVERS
 from src.common.config import get_default_kafka_topic
 from src.common.config import get_required_env
 from src.common.logging import configure_logging
@@ -16,7 +17,6 @@ from src.ingestion.producer import Producer
 
 
 DEFAULT_ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
-DEFAULT_KAFKA_BOOTSTRAP_SERVERS = "localhost:9094"
 DEFAULT_KAFKA_CONNECT_RETRY_ATTEMPTS = 6
 DEFAULT_KAFKA_CONNECT_RETRY_BACKOFF_SECONDS = 5
 

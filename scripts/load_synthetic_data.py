@@ -9,6 +9,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from kafka import KafkaProducer
 
+from src.common.config import DEFAULT_KAFKA_BOOTSTRAP_SERVERS
 from src.common.config import get_default_kafka_topic
 from src.common.config import get_required_env
 from src.common.logging import configure_logging
@@ -16,7 +17,6 @@ from src.synthetic.generator import generate_synthetic_payloads
 
 
 DEFAULT_ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
-DEFAULT_KAFKA_BOOTSTRAP_SERVERS = "localhost:9094"
 DEFAULT_SYNTHETIC_DAYS = 15
 DEFAULT_SYNTHETIC_INTERVAL_MINUTES = 60
 DEFAULT_SYNTHETIC_STATION_COUNT = 1

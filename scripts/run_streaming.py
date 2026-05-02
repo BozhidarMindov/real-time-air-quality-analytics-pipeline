@@ -7,6 +7,7 @@ from pathlib import Path
 from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
 
+from src.common.config import DEFAULT_KAFKA_BOOTSTRAP_SERVERS
 from src.common.config import get_default_kafka_topic
 from src.common.config import get_required_env
 from src.common.logging import configure_logging
@@ -16,7 +17,6 @@ from src.streaming.hdfs_client import DEFAULT_HDFS_USER
 from src.streaming.hdfs_client import HDFSClient
 
 
-DEFAULT_KAFKA_BOOTSTRAP_SERVERS = "localhost:9094"
 DEFAULT_OUTPUT_ROOT = "/data/air-quality"
 DEFAULT_LOCAL_STAGING_DIR = str(Path(tempfile.gettempdir()) / "air-quality")
 DEFAULT_CONSUMER_GROUP = "air-quality-streaming"

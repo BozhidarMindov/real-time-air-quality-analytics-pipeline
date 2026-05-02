@@ -1,6 +1,9 @@
 import os
 
 
+DEFAULT_KAFKA_BOOTSTRAP_SERVERS = "localhost:9094"
+
+
 def get_required_env(name: str) -> str:
     """Return a required environment variable value.
 
