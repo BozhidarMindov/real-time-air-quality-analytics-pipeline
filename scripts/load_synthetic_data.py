@@ -64,7 +64,9 @@ def main(env_path: str | None = None) -> int:
         if server.strip()
     ]
 
-    start_at = utc_now().replace(second=0, microsecond=0) - timedelta(days=days)
+    start_at = utc_now().replace(minute=0, second=0, microsecond=0) - timedelta(
+        days=days
+    )
     producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
     sent_count = 0
 

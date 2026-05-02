@@ -90,3 +90,34 @@ def test_main_defaults_to_hourly_single_station_fifteen_day_dataset(mocker):
     assert station_ids == {10001}
     assert timestamps[0] == "2026-03-27T00:00:00+00:00"
     assert timestamps[-1] == "2026-04-10T23:00:00+00:00"
+
+
+def test_main_aligns_default_synthetic_timestamps_to_top_of_hour(mocker):
+    load_synthetic_data = _load_module()
+    env_values = {
+        "CITY": "varna",
+        "KAFKA_BOOTSTRAP_SERVERS": "broker:9092",
+    }
+    kafka_producer = mocker.Mock()
+    mocker.patch.object(
+        load_synthetic_data, "KafkaProducer", return_value=kafka_producer
+    )
+    mocker.patch.object(load_synthetic_data, "load_dotenv")
+    mocker.patch.object(load_synthetic_data, "configure_logging")
+    mocker.patch.object(
+        load_synthetic_data.os,
+        "getenv",
+        side_effect=lambda key: env_values.get(key),
+    )
+    mocker.patch.object(
+        load_synthetic_data,
+        "utc_now",
+        return_value=datetime(2026, 4, 11, 13, 55, tzinfo=timezone.utc),
+    )
+
+    load_synthetic_data.main()
+
+    first_payload = json.loads(
+        kafka_producer.send.call_args_list[0].kwargs["value"].decode("utf-8")
+    )
+    assert first_payload["data"]["time"]["iso"] == "2026-03-27T13:00:00+00:00"
