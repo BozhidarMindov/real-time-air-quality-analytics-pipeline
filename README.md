@@ -87,6 +87,7 @@ The batch analysis produces these report tables:
 
 - Docker
 - Docker Compose
+- Python 3.11 and uv for local synthetic data loading
 - AQICN API token
 
 ### Clone the Repo
@@ -114,6 +115,36 @@ HDFS path: /data/air-quality/sofia/
 ```
 
 Internal service settings such as `KAFKA_BOOTSTRAP_SERVERS`, `OUTPUT_ROOT`, `HDFS_NAMENODE_URL`, `HDFS_USER`, and `LOCAL_STAGING_DIR` are set in `docker-compose.yaml`.
+
+### Synthetic Demo Data
+
+The synthetic loader publishes AQICN-shaped raw records to the same city Kafka topic as the live producer. The existing streaming consumer then writes the raw and curated JSONL datasets to HDFS.
+
+Start the main pipeline services:
+
+```sh
+docker compose up -d --build kafka-broker namenode datanode1 datanode2 streaming-consumer kafka-ui
+```
+
+Load synthetic data locally. The script publishes to Kafka through the host-exposed broker on `localhost:9094`; the dockerized streaming consumer then writes to HDFS.
+
+```sh
+uv run python scripts/load_synthetic_data.py
+```
+
+With the default synthetic settings, this creates:
+
+```text
+15 days * 24 hours * 1 station = 360 records
+```
+
+The synthetic settings are optional and do not need to be present in `.env`. Override them only when you need a different synthetic dataset:
+
+```dotenv
+SYNTHETIC_DAYS=15
+SYNTHETIC_INTERVAL_MINUTES=60
+SYNTHETIC_STATION_COUNT=1
+```
 
 ### Docker Setup
 
@@ -154,4 +185,6 @@ Internal service settings such as `KAFKA_BOOTSTRAP_SERVERS`, `OUTPUT_ROOT`, `HDF
 - The Kafka topic is always derived from `CITY` as `air_quality_<CITY>`.
 - Raw and curated datasets are written to HDFS under `/data/air-quality/<city>/`.
 - The analytics notebook container is intended for interactive Spark exploration on top of the curated dataset.
+- The live producer can poll every 5 minutes even when AQICN stations publish new measurements less frequently, such as hourly. This is still realistic because the pipeline checks for updates often, while curation deduplicates unchanged station observations.
+- Synthetic data defaults to hourly timestamps, which better reflects how often station measurements commonly change. It should still be described as synthetic demo data, not as exact historical AQICN measurements.
 - This project was completed as part of the **Big Data Engineering course** in the **Big Data Technologies** master's program at **Sofia University**.
