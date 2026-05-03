@@ -31,15 +31,16 @@
 - **Streaming Layer**: Python consumer with curation and deduplication
 - **Storage Layer**: HDFS with raw and curated JSONL outputs
 - **Analytics Layer**: PySpark batch analysis in Jupyter
-- **Runtime/Orchestration**: Docker Compose
+- **Runtime/Packaging**: Python 3.11 + uv + Docker
+- **Orchestration**: Docker Compose
 
 ---
 
 ## How It Works
 
 1. The `ingestion-producer` fetches air quality snapshots for the configured city from the AQICN API.
-2. Each source payload is published to the city-specific Kafka topic derived from `CITY`. For example, `CITY=sofia` uses `air_quality_sofia`.
-3. The `streaming-consumer` reads Kafka batches, groups records by day, and writes:
+2. Each source payload is published to the city-specific Kafka topic derived from the `CITY` environment variable. For example, `CITY=sofia` uses `air_quality_sofia`.
+3. The `streaming-consumer` reads Kafka records, groups them by day, and writes:
    - raw payloads to HDFS
    - curated, deduplicated observations to HDFS
 4. The `analytics-notebook` container reads the curated HDFS dataset with Spark.
@@ -75,7 +76,7 @@ The batch analysis produces these report tables:
 - `hourly_aqi`: average AQI grouped by hour of day
 - `daily_aqi`: average AQI grouped by calendar day
 - `aqi_category_distribution`: AQI counts grouped by AQI category
-- `average_pollutants`: mean `pm10`, `no2`, and `o3` values
+- `average_pollutants`: mean pollutant values grouped dynamically by pollutant name, such as `pm10`, `pm25`, `no2`, or `o3`
 - `dominant_pollutants`: dominant pollutant counts ordered by frequency
 - `weather_correlations`: AQI correlations with temperature, humidity, and wind
 
@@ -101,7 +102,7 @@ git clone https://github.com/BozhidarMindov/real-time-air-quality-analytics-pipe
 Create a `.env` file in the project root. Docker Compose reads this file and passes only the needed values to each service.
 
 ```dotenv
-AQICN_API_TOKEN=<your_token> # Required
+AQICN_API_TOKEN=<your_token> # # Required for the default live ingestion pipeline
 CITY=sofia # Required
 POLL_INTERVAL_SECONDS=300 # Optional (default=300; 5 minutes)
 ```
@@ -116,17 +117,46 @@ HDFS path: /data/air-quality/sofia/
 
 Internal service settings such as `KAFKA_BOOTSTRAP_SERVERS`, `OUTPUT_ROOT`, `HDFS_NAMENODE_URL`, `HDFS_USER`, and `LOCAL_STAGING_DIR` are set in `docker-compose.yaml`.
 
+### Docker Setup
+
+1. Start the containers:
+
+   ```sh
+   docker compose up -d --build
+   ```
+
+2. When the containers are running, open the `real-time-air-quality-analytics-pipeline-analytics-notebook` container logs by executing:
+
+   ```sh
+   docker logs real-time-air-quality-analytics-pipeline-analytics-notebook
+   ```
+
+3. Look for the available Jupyter url logs, which should look something like this:
+
+   ```txt
+   [I 2026-04-12 11:25:26.074 ServerApp] http://localhost:8888/lab?token=<some-auto-generated-jupyter-token>
+   [I 2026-04-12 11:25:26.074 ServerApp] http://127.0.0.1:8888/lab?token=<some-auto-generated-jupyter-token>
+   ```
+
+4. Click on either url to access the notebook (which is in the `notebooks` folder) and run the analytics.
+
+### Useful URLs
+
+- Kafka UI: `http://localhost:8080`
+- HDFS NameNode UI: `http://localhost:9870`
+- Jupyter Notebook: `http://localhost:8888`
+
 ### Synthetic Demo Data
 
-The synthetic loader publishes AQICN-shaped raw records to the same city Kafka topic as the live producer. The existing streaming consumer then writes the raw and curated JSONL datasets to HDFS.
+The synthetic loader publishes AQICN-shaped raw records to the same city Kafka topic as the live producer. The existing streaming consumer then writes the raw and curated JSONL datasets to HDFS.   Synthetic data does not call the AQICN API, but the default Docker setup starts the live ingestion producer, so `.env` should still include `AQICN_API_TOKEN`. To run only the synthetic pipeline services without live ingestion, use the commands below. 
 
-Start the main pipeline services:
+Start the main pipeline services (if the containers are already running, you can skip this step):
 
 ```sh
 docker compose up -d --build kafka-broker namenode datanode1 datanode2 streaming-consumer kafka-ui
 ```
 
-Load synthetic data locally. The script publishes to Kafka through the host-exposed broker on `localhost:9094`; the dockerized streaming consumer then writes to HDFS.
+Load synthetic data locally. The script publishes to Kafka through the host-exposed broker on `localhost:9094`. The dockerized streaming consumer then writes to HDFS.
 
 ```sh
 uv run python scripts/load_synthetic_data.py
@@ -146,41 +176,12 @@ SYNTHETIC_INTERVAL_MINUTES=60
 SYNTHETIC_STATION_COUNT=1
 ```
 
-### Docker Setup
-
-1. Start the containers:
-
-   ```sh
-   docker compose up -d --build
-   ```
-
-2. When the containers are running, open the `real-time-air-quality-analytics-pipeline-analytics-notebook` container logs by executing:
-
-   ```sh
-   docker logs real-time-air-quality-analytics-pipeline-analytics-notebook
-   ```
-
-3. Look for the available Jupyter url logs, which should look something like this:
-
-   ```txt
-   [I 2026-04-12 11:25:26.074 ServerApp] http://localhost:8888/lab?token=7fecf7625414e7a57dd1e30db3fc846b56592cebf2ec387c
-   [I 2026-04-12 11:25:26.074 ServerApp] http://127.0.0.1:8888/lab?token=7fecf7625414e7a57dd1e30db3fc846b56592cebf2ec387c
-   ```
-
-4. Click on either url to access the notebook (which is in the `notebooks` folder) and run the analytics.
-
-### Useful URLs
-
-- Kafka UI: `http://localhost:8080`
-- HDFS NameNode UI: `http://localhost:9870`
-- Jupyter Notebook: `http://localhost:8888`
-
 ---
 
 ## Notes
 
-- The pipeline is city-configurable through the required `CITY` environment variable; Sofia is only an example city.
-- The producer requires `AQICN_API_TOKEN` and `CITY`; the streaming consumer and analytics job require `CITY`.
+- The pipeline is city-configurable through the required `CITY` environment variable. Sofia is only an example city.
+- The producer requires `AQICN_API_TOKEN` and `CITY`. The streaming consumer and analytics job require `CITY`.
 - Docker Compose is the intended runtime. It sets container-only service addresses such as `kafka-broker:9092` and `http://namenode:9870`.
 - The Kafka topic is always derived from `CITY` as `air_quality_<CITY>`.
 - Raw and curated datasets are written to HDFS under `/data/air-quality/<city>/`.
