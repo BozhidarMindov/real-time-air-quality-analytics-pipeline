@@ -121,7 +121,9 @@ def test_compute_average_pollutants_groups_dynamic_pollutants(spark_session):
         schema=schema,
     )
 
-    rows = [row.asDict() for row in metrics.compute_average_pollutants(source).collect()]
+    rows = [
+        row.asDict() for row in metrics.compute_average_pollutants(source).collect()
+    ]
 
     assert rows == [
         {"pollutant": "pm10", "avg_value": 40.0, "measurement_count": 2},

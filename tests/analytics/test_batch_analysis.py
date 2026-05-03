@@ -1,4 +1,6 @@
 from src.analytics import batch_analysis
+
+
 def test_build_curated_input_path_uses_city_jsonl_glob():
     result = batch_analysis.build_curated_input_path("/data/air-quality", "sofia")
 
