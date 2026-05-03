@@ -10,8 +10,8 @@ def test_load_example_payload_reads_first_raw_jsonl_record():
     payload = load_example_payload()
 
     assert payload["status"] == "ok"
-    assert payload["data"]["idx"] == 8088
-    assert payload["data"]["time"]["iso"] == "2026-04-12T21:00:00+03:00"
+    assert payload["data"]["idx"] == 8086
+    assert payload["data"]["time"]["iso"] == "2026-05-02T04:00:00+03:00"
 
 
 def test_generate_synthetic_payloads_preserves_curatable_raw_shape():
