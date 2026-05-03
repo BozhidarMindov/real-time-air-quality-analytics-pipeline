@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CuratedAirQualityObservation",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "station_id",
+    "station_name",
+    "latitude",
+    "longitude",
+    "pollutants"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Observation timestamp in ISO 8601 format"
+    },
+    "station_id": {
+      "type": "integer",
+      "description": "Unique AQICN station identifier"
+    },
+    "station_name": {
+      "type": "string",
+      "description": "Name of the monitoring station"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Station latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Station longitude"
+    },
+    "aqi": {
+      "type": ["integer", "null"],
+      "description": "Air Quality Index value"
+    },
+    "dominant_pollutant": {
+      "type": ["string", "null"],
+      "description": "Main pollutant affecting AQI"
+    },
+    "pollutants": {
+      "type": "object",
+      "description": "Dynamic mapping of pollutant names to values",
+      "additionalProperties": {
+        "type": ["number", "null"]
+      }
+    },
+    "temperature": {
+      "type": ["number", "null"],
+      "description": "Temperature (°C)"
+    },
+    "humidity": {
+      "type": ["number", "null"],
+      "description": "Humidity (%)"
+    },
+    "wind": {
+      "type": ["number", "null"],
+      "description": "Wind speed"
+    },
+    "pressure": {
+      "type": ["number", "null"],
+      "description": "Atmospheric pressure"
+    },
+    "dew": {
+      "type": ["number", "null"],
+      "description": "Dew point"
+    }
+  },
+  "additionalProperties": false
+}
