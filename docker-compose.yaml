@@ -121,7 +121,6 @@ services:
       - "4040:4040"
     volumes:
       - ./notebooks:/app/notebooks
-      - ./src:/app/src
 
 volumes:
   namenode_data:
