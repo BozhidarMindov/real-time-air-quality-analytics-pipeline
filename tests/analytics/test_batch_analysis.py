@@ -1,6 +1,4 @@
 from src.analytics import batch_analysis
-
-
 def test_build_curated_input_path_uses_city_jsonl_glob():
     result = batch_analysis.build_curated_input_path("/data/air-quality", "sofia")
 
@@ -18,9 +16,7 @@ def test_run_batch_analysis_returns_expected_summary_keys(spark_session, mocker)
                 "longitude": 23.3219,
                 "aqi": 40,
                 "dominant_pollutant": "pm10",
-                "pm10": 20.0,
-                "no2": 10.0,
-                "o3": 15.0,
+                "pollutants": {"pm10": 20.0, "no2": 10.0, "o3": 15.0},
                 "temperature": 18.0,
                 "humidity": 50.0,
                 "wind": 2.0,
@@ -35,9 +31,7 @@ def test_run_batch_analysis_returns_expected_summary_keys(spark_session, mocker)
                 "longitude": 23.3219,
                 "aqi": 95,
                 "dominant_pollutant": "pm10",
-                "pm10": 35.0,
-                "no2": 12.0,
-                "o3": 18.0,
+                "pollutants": {"pm10": 35.0, "pm25": 14.0},
                 "temperature": 19.0,
                 "humidity": 48.0,
                 "wind": 2.5,
@@ -71,7 +65,7 @@ def test_normalize_curated_dataframe_adds_hour_and_day_columns(spark_session):
             {
                 "timestamp": "2026-04-07T10:15:00+03:00",
                 "aqi": 64,
-                "pm10": 31.5,
+                "pollutants": {"pm10": 31.5},
             }
         ]
     )

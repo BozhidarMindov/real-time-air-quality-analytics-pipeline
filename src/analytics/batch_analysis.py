@@ -5,6 +5,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import DoubleType
 from pyspark.sql.types import IntegerType
+from pyspark.sql.types import MapType
 from pyspark.sql.types import StringType
 from pyspark.sql.types import StructField
 from pyspark.sql.types import StructType
@@ -30,9 +31,7 @@ CURATED_SCHEMA = StructType(
         StructField("longitude", DoubleType(), True),
         StructField("aqi", IntegerType(), True),
         StructField("dominant_pollutant", StringType(), True),
-        StructField("pm10", DoubleType(), True),
-        StructField("no2", DoubleType(), True),
-        StructField("o3", DoubleType(), True),
+        StructField("pollutants", MapType(StringType(), DoubleType()), True),
         StructField("temperature", DoubleType(), True),
         StructField("humidity", DoubleType(), True),
         StructField("wind", DoubleType(), True),
@@ -94,7 +93,19 @@ def normalize_curated_dataframe(dataframe: DataFrame) -> DataFrame:
     Returns:
         A Spark dataframe with parsed timestamp, hour, and day columns.
     """
-    parsed = dataframe.withColumn(
+    if "pollutants" not in dataframe.columns:
+        dataframe = dataframe.withColumn(
+            "pollutants", F.lit(None).cast(MapType(StringType(), DoubleType()))
+        )
+
+    with_pollutants = dataframe.withColumn(
+        "pollutants",
+        F.when(
+            F.col("pollutants").isNull() | (F.size(F.col("pollutants")) == 0),
+            F.create_map(),
+        ).otherwise(F.col("pollutants")),
+    )
+    parsed = with_pollutants.withColumn(
         "event_timestamp", F.expr("try_to_timestamp(timestamp)")
     )
     filtered = parsed.where(

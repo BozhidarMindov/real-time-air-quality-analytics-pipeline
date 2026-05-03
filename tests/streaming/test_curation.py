@@ -20,8 +20,10 @@ def test_extract_curated_record_keeps_only_required_fields():
             "time": {"iso": "2026-04-07T10:00:00+03:00"},
             "iaqi": {
                 "pm10": {"v": 31.5},
+                "pm25": {"v": 14.7},
                 "no2": {"v": 18.2},
                 "o3": {"v": 11.4},
+                "co": {"v": 2.1},
                 "t": {"v": 19.1},
                 "h": {"v": 47.0},
                 "w": {"v": 3.5},
@@ -42,15 +44,22 @@ def test_extract_curated_record_keeps_only_required_fields():
         "longitude": 23.3219,
         "aqi": 64,
         "dominant_pollutant": "pm10",
-        "pm10": 31.5,
-        "no2": 18.2,
-        "o3": 11.4,
+        "pollutants": {
+            "co": 2.1,
+            "no2": 18.2,
+            "o3": 11.4,
+            "pm10": 31.5,
+            "pm25": 14.7,
+        },
         "temperature": 19.1,
         "humidity": 47.0,
         "wind": 3.5,
         "pressure": 1008.0,
         "dew": 7.2,
     }
+    assert "pm10" not in result
+    assert "no2" not in result
+    assert "o3" not in result
 
 
 def test_filter_curated_records_skips_cached_and_batch_duplicates(tmp_path, mocker):

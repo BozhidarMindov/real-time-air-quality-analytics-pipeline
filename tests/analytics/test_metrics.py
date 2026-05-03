@@ -1,4 +1,9 @@
 from src.analytics import metrics
+from pyspark.sql.types import DoubleType
+from pyspark.sql.types import MapType
+from pyspark.sql.types import StringType
+from pyspark.sql.types import StructField
+from pyspark.sql.types import StructType
 
 
 def test_compute_average_aqi_by_hour_of_day_returns_average_by_hour(spark_session):
@@ -97,21 +102,32 @@ def test_compute_aqi_category_distribution_groups_by_aqi_band(spark_session):
     ]
 
 
-def test_compute_average_pollutants_returns_pm10_no2_o3(spark_session):
-    source = spark_session.createDataFrame(
+def test_compute_average_pollutants_groups_dynamic_pollutants(spark_session):
+    schema = StructType(
         [
-            {"pm10": 30.0, "no2": 10.0, "o3": 20.0},
-            {"pm10": 50.0, "no2": 20.0, "o3": 40.0},
+            StructField(
+                "pollutants",
+                MapType(StringType(), DoubleType()),
+                True,
+            )
         ]
     )
+    source = spark_session.createDataFrame(
+        [
+            {"pollutants": {"pm10": 30.0, "pm25": 12.0}},
+            {"pollutants": {"pm10": 50.0, "no2": 20.0}},
+            {"pollutants": {}},
+        ],
+        schema=schema,
+    )
 
-    row = metrics.compute_average_pollutants(source).collect()[0]
+    rows = [row.asDict() for row in metrics.compute_average_pollutants(source).collect()]
 
-    assert row.asDict() == {
-        "avg_pm10": 40.0,
-        "avg_no2": 15.0,
-        "avg_o3": 30.0,
-    }
+    assert rows == [
+        {"pollutant": "pm10", "avg_value": 40.0, "measurement_count": 2},
+        {"pollutant": "no2", "avg_value": 20.0, "measurement_count": 1},
+        {"pollutant": "pm25", "avg_value": 12.0, "measurement_count": 1},
+    ]
 
 
 def test_compute_dominant_pollutant_counts_orders_by_frequency(spark_session):

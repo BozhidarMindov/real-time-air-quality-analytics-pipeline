@@ -80,18 +80,22 @@ def compute_aqi_category_distribution(dataframe: DataFrame) -> DataFrame:
 
 
 def compute_average_pollutants(dataframe: DataFrame) -> DataFrame:
-    """Compute the average pollutant values used in the report.
+    """Compute average pollutant values from the dynamic pollutant map.
 
     Args:
         dataframe: The normalized curated records.
 
     Returns:
-        A Spark dataframe with the pollutant averages used in the report.
+        A Spark dataframe with average values grouped by pollutant name.
     """
-    return dataframe.agg(
-        F.avg("pm10").alias("avg_pm10"),
-        F.avg("no2").alias("avg_no2"),
-        F.avg("o3").alias("avg_o3"),
+    exploded = dataframe.select(F.explode("pollutants").alias("pollutant", "value"))
+    return (
+        exploded.groupBy("pollutant")
+        .agg(
+            F.avg("value").alias("avg_value"),
+            F.count("value").alias("measurement_count"),
+        )
+        .orderBy(F.desc("measurement_count"), F.asc("pollutant"))
     )
 
 

@@ -2,6 +2,9 @@ import json
 from pathlib import Path
 
 
+NON_POLLUTANT_IAQI_KEYS = {"dew", "h", "p", "t", "w"}
+
+
 def get_nested(mapping: dict | None, *keys: str):
     """Return a nested mapping value when every key exists.
 
@@ -18,6 +21,29 @@ def get_nested(mapping: dict | None, *keys: str):
             return None
         current = current.get(key)
     return current
+
+
+def extract_pollutants(data: dict) -> dict[str, float]:
+    """Extract numeric pollutant values from an AQICN `iaqi` mapping.
+
+    Args:
+        data: A raw AQICN data payload.
+
+    Returns:
+        Pollutant values keyed by AQICN pollutant name.
+    """
+    iaqi = data.get("iaqi")
+    if not isinstance(iaqi, dict):
+        return {}
+
+    pollutants = {}
+    for key in sorted(iaqi):
+        if key in NON_POLLUTANT_IAQI_KEYS:
+            continue
+        value = get_nested(iaqi, key, "v")
+        if isinstance(value, (int, float)):
+            pollutants[key] = float(value)
+    return pollutants
 
 
 def extract_curated_record(payload: dict) -> dict:
@@ -41,9 +67,7 @@ def extract_curated_record(payload: dict) -> dict:
         "longitude": get_geo_value(data, 1),
         "aqi": data.get("aqi"),
         "dominant_pollutant": data.get("dominentpol"),
-        "pm10": get_nested(data, "iaqi", "pm10", "v"),
-        "no2": get_nested(data, "iaqi", "no2", "v"),
-        "o3": get_nested(data, "iaqi", "o3", "v"),
+        "pollutants": extract_pollutants(data),
         "temperature": get_nested(data, "iaqi", "t", "v"),
         "humidity": get_nested(data, "iaqi", "h", "v"),
         "wind": get_nested(data, "iaqi", "w", "v"),
