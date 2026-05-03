@@ -8,7 +8,7 @@ from typing import Iterator
 
 
 DEFAULT_EXAMPLE_RAW_PATH = (
-    Path(__file__).resolve().parent / "examples" / "raw" / "2026-04-12.jsonl"
+    Path(__file__).resolve().parent / "examples" / "raw" / "2026-05-02.jsonl"
 )
 
 
