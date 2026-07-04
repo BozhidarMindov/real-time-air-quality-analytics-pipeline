@@ -227,6 +227,7 @@ Going to http://localhost:8888 will open the Jupyter Notebook. Run the analytics
 - The Kafka topic is always derived from `CITY` as `air_quality_<CITY>`.
 - Raw and curated datasets are written to HDFS under `/data/air-quality/<city>/`.
 - The analytics notebook container is intended for interactive Spark exploration on top of the curated dataset.
+- Weather correlation outputs are generated only when the curated dataset contains enough valid weather observations. Otherwise, the notebook skips the correlation plot and summary.
 - The live producer can poll every 5 minutes even when AQICN stations publish new measurements less frequently, such as hourly. This is still realistic because the pipeline checks for updates often, while curation deduplicates unchanged station observations.
 - Synthetic data defaults to hourly timestamps, which better reflects how often station measurements commonly change. It should still be described as synthetic demo data, not as exact historical AQICN measurements.
 - This project was completed as part of the **Big Data Engineering course** in the **Big Data Technologies** master's program at **Sofia University**.
