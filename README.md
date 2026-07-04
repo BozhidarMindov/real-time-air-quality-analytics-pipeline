@@ -48,26 +48,8 @@
 
 ### Pipeline Schema
 
-```text
-AQICN API
-   |
-   v
-ingestion-producer
-   |
-   v
-Kafka topic: air_quality_<city>
-   |
-   v
-streaming-consumer
-   |
-   v
-HDFS
-  |- /data/air-quality/<city>/raw/*.jsonl
-  |- /data/air-quality/<city>/curated/*.jsonl
-   |
-   v
-analytics-notebook (Spark + Jupyter)
-```
+
+<img src="assets/pipeline/pipeline.png" alt="Pipeline architecture" width="650">
 
 ### Analytics Outputs
 
