@@ -85,7 +85,7 @@ git clone https://github.com/BozhidarMindov/real-time-air-quality-analytics-pipe
 Create a `.env` file in the project root. Docker Compose reads this file and passes only the needed values to each service.
 
 ```dotenv
-AQICN_API_TOKEN=<your_token> # # Required for the default live ingestion pipeline
+AQICN_API_TOKEN=<your_token> # Required for the default live ingestion pipeline
 CITY=sofia # Required
 POLL_INTERVAL_SECONDS=300 # Optional (default=300; 5 minutes)
 ```
@@ -131,7 +131,7 @@ Internal service settings such as `KAFKA_BOOTSTRAP_SERVERS`, `OUTPUT_ROOT`, `HDF
 
 ### Synthetic Demo Data
 
-The synthetic loader publishes AQICN-shaped raw records to the same city Kafka topic as the live producer. The existing streaming consumer then writes the raw and curated JSONL datasets to HDFS.   Synthetic data does not call the AQICN API, but the default Docker setup starts the live ingestion producer, so `.env` should still include `AQICN_API_TOKEN`. To run only the synthetic pipeline services without live ingestion, use the commands below. 
+The pipeline includes a synthetic data loader if you want to test the setup without connecting to the live AQICN API. The synthetic loader publishes AQICN-shaped raw records to the same city Kafka topic as the live producer. The existing streaming consumer then writes the raw and curated JSONL datasets to HDFS. Synthetic data does not call the AQICN API. If you start the full Docker Compose setup, `.env` should still include `AQICN_API_TOKEN` because the live ingestion producer is started by default. To run only the synthetic pipeline without live ingestion, use the commands below.
 
 Start the main pipeline services (if the containers are already running, you can skip this step):
 
@@ -158,6 +158,64 @@ SYNTHETIC_DAYS=15
 SYNTHETIC_INTERVAL_MINUTES=60
 SYNTHETIC_STATION_COUNT=1
 ```
+
+---
+
+## Demo
+
+This demo uses the `sofia` city feed.
+
+### Kafka UI
+
+Going to http://localhost:8080 will open the Kafka UI.
+
+#### Topics
+
+![kafka_ui_topics.png](assets/demo/kafka_ui/kafka_ui_topics.png)
+
+#### Consumers
+
+![kafka_ui_consumers.png](assets/demo/kafka_ui/kafka_ui_consumers.png)
+
+### HDFS NameNode UI
+
+Going to http://localhost:9870 will open the HDFS NameNode UI, giving you the option to explore the raw and curated datasets.
+
+#### Raw data stored in HDFS
+
+![raw_data_hdfs.png](assets/demo/hdfs/raw_data_hdfs.png)
+
+#### Curated data stored in HDFS
+
+![curated_data_hdfs.png](assets/demo/hdfs/curated_data_hdfs.png)
+
+### Jupyter Analytics
+
+Going to http://localhost:8888 will open the Jupyter Notebook. Run the analytics notebook to see the results.
+
+#### Average AQI by hour of day plot
+
+![average_aqi_by_hour_of_day.png](assets/demo/jupyter/average_aqi_by_hour_of_day.png)
+
+#### Average AQI by day plot
+
+![average_aqi_by_day.png](assets/demo/jupyter/average_aqi_by_day.png)
+
+#### AQI category distribution bar chart
+
+![aqi_category_distribution.png](assets/demo/jupyter/aqi_category_distribution.png)
+
+#### Pollutant comparison bar chart
+
+![pollutant_comparison.png](assets/demo/jupyter/pollutant_comparison.png)
+
+#### Dominant pollutant frequency bar chart
+
+![dominant_pollutant_frequency.png](assets/demo/jupyter/dominant_pollutant_frequency.png)
+
+#### AQI correlation with weather metrics bar chart
+
+![aqi_correlations_weather_metrics.png](assets/demo/jupyter/aqi_correlations_weather_metrics.png)
 
 ---
 
