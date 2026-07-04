@@ -48,8 +48,9 @@
 
 ### Pipeline Schema
 
-
-<img src="assets/pipeline/pipeline.png" alt="Pipeline architecture" width="650">
+<div style="text-align: center;">
+  <img src="assets/pipeline/pipeline.png" alt="Pipeline architecture" width="650">
+</div>
 
 ### Analytics Outputs
 
